@@ -1,0 +1,64 @@
+sequenceDiagram
+    autonumber
+    actor User as Collegiate User (Admin / Candidate / Voter)
+    participant UI as Browser / Frontend
+    participant Router as Front Controller (index.php)
+    participant AuthSvc as AuthService
+    participant CandRepo as CandidateRepository
+    participant UserRepo as UserRepository
+    participant LoginRepo as LoginAttemptRepository
+    participant DB as MariaDB / MySQL
+
+    User->>UI: Select portal on /login (Admin, Candidate, or Voter)
+    UI-->>User: Render portal login form (/login/{portal})
+    User->>UI: Enter Credentials (ID & Password)
+    UI->>Router: POST /login/{portal} (credentials, CSRF)
+    Router->>AuthSvc: login(identifier, password, portal)
+
+    AuthSvc->>LoginRepo: isThrottled(identifier, ip)
+    LoginRepo->>DB: Check failed attempts in sliding 15m window
+    DB-->>LoginRepo: Failure count (< 5)
+
+    alt Identifier is Candidate Code (e.g. CAND-01) in candidate portal
+        AuthSvc->>CandRepo: findByCandidateIdentifier(identifier)
+        CandRepo->>DB: SELECT * FROM candidates WHERE id = ?
+        DB-->>CandRepo: candidate record with user_id
+    end
+
+    AuthSvc->>UserRepo: findByIdentifier(identifier)
+    UserRepo->>DB: SELECT * FROM users WHERE identifier = ?
+    DB-->>UserRepo: user record
+
+    AuthSvc->>AuthSvc: password_verify(password, hash) & status == 'active'
+
+    alt Credentials Invalid or Suspended
+        AuthSvc->>LoginRepo: recordAttempt(identifier, ip, failure)
+        AuthSvc-->>Router: Generic Authentication Failure
+        Router-->>UI: Display "Invalid institutional credentials"
+    else Credentials Valid
+        Note over AuthSvc: Portal Role Mismatch Gatekeeping
+
+        alt Portal == 'admin' AND role NOT IN ('admin', 'election_officer')
+            AuthSvc-->>Router: Access denied: Administrative credentials required
+            Router-->>UI: Role mismatch error notice
+        else Portal == 'candidate' AND role != 'candidate' AND NOT hasCandidateProfile
+            AuthSvc-->>Router: Access denied: No candidate profile found for this account
+            Router-->>UI: Role mismatch error notice
+        else Portal == 'voter' AND role IN ('admin', 'election_officer')
+            AuthSvc-->>Router: Access denied: Administrator accounts cannot sign in through Voter portal
+            Router-->>UI: Role mismatch error notice
+        else Authorized Role Match
+            AuthSvc->>LoginRepo: clearSuccessful(identifier, ip)
+            AuthSvc->>Router: Auth::login(user, portal) (Session regenerated, auth_version, is_candidate)
+
+            alt must_change_password == 1
+                Router-->>UI: 302 Redirect to /change-password
+            else Portal == 'admin'
+                Router-->>UI: 302 Redirect to /admin
+            else Portal == 'candidate'
+                Router-->>UI: 302 Redirect to /candidate
+            else Portal == 'voter'
+                Router-->>UI: 302 Redirect to /dashboard
+            end
+        end
+    end

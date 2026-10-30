@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    actor Admin as System Administrator
+    participant UI as Admin Web Console
+    participant Ctrl as User Controller
+    participant AcctSvc as AccountService
+    participant UserRepo as UserRepository
+    participant Audit as Logger (Audit Ledger)
+    participant DB as MariaDB / MySQL
+
+    Admin->>UI: Submit account details (Single or CSV Bulk Import)
+    UI->>Ctrl: POST /admin/users/create (or /import) with CSRF
+    Ctrl->>AcctSvc: createUser(data, adminId)
+    
+    AcctSvc->>AcctSvc: Validate Roll/Emp ID format & unique check
+    AcctSvc->>UserRepo: findByIdentifier(identifier)
+    UserRepo->>DB: SELECT id FROM users WHERE identifier = ?
+    DB-->>UserRepo: Existing check result
+    
+    alt Duplicate ID found
+        AcctSvc-->>Ctrl: Error: Account already exists
+        Ctrl-->>UI: Display duplicate warning
+    else Unique ID
+        AcctSvc->>AcctSvc: generateTemporaryPassword() (Cryptographic CSPRNG)
+        AcctSvc->>AcctSvc: password_hash(tempPassword, PASSWORD_DEFAULT)
+        AcctSvc->>UserRepo: create(user fields + hash + must_change_password=1)
+        UserRepo->>DB: INSERT INTO users VALUES (...)
+        DB-->>UserRepo: Insert ID
+        
+        AcctSvc->>Audit: audit("ACCOUNT_CREATED", userId)
+        Audit->>DB: INSERT INTO audit_logs (details without password)
+        
+        AcctSvc-->>Ctrl: Success + temporary password (Plain shown once)
+        Ctrl-->>UI: Display credentials card / download list
+        UI-->>Admin: Secure handoff of initial credential
+    end

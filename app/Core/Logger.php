@@ -1,0 +1,95 @@
+<?php
+namespace App\Core;
+
+/**
+ * System and Security Audit Logger
+ * Records immutable events in the database and structured files.
+ * Strictly redacts passwords, tokens, and secret parameters.
+ */
+class Logger
+{
+    private const REDACTED_KEYS = [
+        'password',
+        'password_hash',
+        'temp_password',
+        'password_confirmation',
+        'current_password',
+        'new_password',
+        'csrf_token',
+        'token'
+    ];
+
+    public static function audit(
+        string $action,
+        string $entityType,
+        ?string $entityId = null,
+        array $details = [],
+        ?int $userId = null
+    ): void {
+        try {
+            $db = Database::getInstance();
+
+            if ($userId === null) {
+                $userId = Auth::id();
+            }
+
+            $ip = self::getClientIp();
+            $userAgent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'CLI/Unknown', 0, 255);
+            $cleanDetails = self::redactSensitiveData($details);
+            $detailsJson = !empty($cleanDetails) ? json_encode($cleanDetails, JSON_UNESCAPED_SLASHES) : null;
+
+            $db->execute(
+                "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, ip_address, user_agent, details_json) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [$userId, $action, $entityType, $entityId, $ip, $userAgent, $detailsJson],
+                'issssss'
+            );
+        } catch (\Throwable $e) {
+            self::fileLog('ERROR', 'Failed to write audit log to DB: ' . $e->getMessage());
+        }
+
+        self::fileLog('AUDIT', sprintf(
+            '[%s] user_id=%s entity=%s:%s ip=%s details=%s',
+            $action,
+            $userId ?? 'anon',
+            $entityType,
+            $entityId ?? 'none',
+            self::getClientIp(),
+            json_encode(self::redactSensitiveData($details))
+        ));
+    }
+
+    public static function fileLog(string $level, string $message): void
+    {
+        $logDir = dirname(__DIR__, 2) . '/storage/logs';
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0755, true);
+        }
+        $logFile = $logDir . '/verityvote-' . date('Y-m-d') . '.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $entry = sprintf("[%s] [%s] %s\n", $timestamp, strtoupper($level), $message);
+        @file_put_contents($logFile, $entry, FILE_APPEND | LOCK_EX);
+    }
+
+    public static function redactSensitiveData(array $data): array
+    {
+        $clean = [];
+        foreach ($data as $key => $value) {
+            $lowerKey = strtolower($key);
+            if (in_array($lowerKey, self::REDACTED_KEYS, true)) {
+                $clean[$key] = '[REDACTED]';
+            } elseif (is_array($value)) {
+                $clean[$key] = self::redactSensitiveData($value);
+            } else {
+                $clean[$key] = $value;
+            }
+        }
+        return $clean;
+    }
+
+    public static function getClientIp(): string
+    {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '127.0.0.1';
+    }
+}

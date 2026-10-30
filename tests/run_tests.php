@@ -1,0 +1,67 @@
+<?php
+/**
+ * VerityVote - Automated Test Suite Runner
+ */
+
+if (PHP_SAPI !== 'cli') {
+    die("Test runner must be executed from CLI.\n");
+}
+
+require_once dirname(__DIR__) . '/app/bootstrap.php';
+
+require_once __DIR__ . '/Unit/HelperTest.php';
+require_once __DIR__ . '/Integration/AuthIntegrationTest.php';
+require_once __DIR__ . '/Integration/ElectionLifecycleTest.php';
+require_once __DIR__ . '/Integration/VotingConcurrencyTest.php';
+require_once __DIR__ . '/Integration/ThreePortalsAuthTest.php';
+require_once __DIR__ . '/Integration/HttpJourneyTest.php';
+
+use Tests\Unit\HelperTest;
+use Tests\Integration\AuthIntegrationTest;
+use Tests\Integration\ElectionLifecycleTest;
+use Tests\Integration\VotingConcurrencyTest;
+use Tests\Integration\ThreePortalsAuthTest;
+use Tests\Integration\HttpJourneyTest;
+
+echo "========================================================\n";
+echo " VerityVote - Complete Automated Test Suite\n";
+echo "========================================================\n\n";
+
+$suites = [
+    'Helper & Security Unit Tests' => HelperTest::class,
+    'Authentication & Session Integration Tests' => AuthIntegrationTest::class,
+    'Election Lifecycle & Lock Tests' => ElectionLifecycleTest::class,
+    'Voting Engine & Concurrency Tests' => VotingConcurrencyTest::class,
+    'Three Portals & Role Boundary Integration Tests' => ThreePortalsAuthTest::class,
+    'HTTP & Browser Real-World Journey Tests' => HttpJourneyTest::class,
+];
+
+$totalPassed = 0;
+$totalFailed = 0;
+
+foreach ($suites as $suiteName => $className) {
+    echo "--- [ {$suiteName} ] ---\n";
+    try {
+        $suiteResults = $className::run();
+        foreach ($suiteResults as $test) {
+            if ($test['pass']) {
+                $totalPassed++;
+                echo "  [PASS] {$test['name']}\n";
+            } else {
+                $totalFailed++;
+                echo "  [FAIL] {$test['name']}\n";
+            }
+        }
+    } catch (\Throwable $e) {
+        $totalFailed++;
+        echo "  [EXCEPTION] {$e->getMessage()}\n";
+        echo "  Trace: " . $e->getTraceAsString() . "\n";
+    }
+    echo "\n";
+}
+
+echo "========================================================\n";
+echo "Test Execution Summary: {$totalPassed} Passed | {$totalFailed} Failed\n";
+echo "========================================================\n";
+
+exit($totalFailed > 0 ? 1 : 0);

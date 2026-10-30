@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    actor Officer as Election Officer / Admin
+    participant UI as Admin Console
+    participant Ctrl as Election Controller
+    participant ElSvc as ElectionService
+    participant ElRepo as ElectionRepository
+    participant ResSvc as ResultsService
+    participant Exporter as CSVExporter
+    participant DB as MariaDB / MySQL
+
+    Officer->>UI: Click "Close Election" (or automated server deadline reached)
+    UI->>Ctrl: POST /admin/elections/status (status: 'closed')
+    Ctrl->>ElSvc: transitionState(electionId, 'closed', officerId)
+    ElSvc->>ElRepo: updateStatus(electionId, 'closed')
+    ElRepo->>DB: UPDATE elections SET status = 'closed' WHERE id = ?
+    Note over DB: No further votes can be cast
+
+    Officer->>UI: Review provisional tallies and click "Publish Official Results"
+    UI->>Ctrl: POST /admin/elections/status (status: 'results_published')
+    Ctrl->>ElSvc: transitionState(electionId, 'results_published', officerId)
+    ElSvc->>ElRepo: updateStatus(electionId, 'results_published')
+    ElRepo->>DB: UPDATE elections SET status = 'results_published' WHERE id = ?
+    
+    Officer->>UI: Request Certified Tally CSV Export
+    UI->>Ctrl: GET /admin/reports/csv?id=12
+    Ctrl->>ResSvc: generateResultsCsv(electionId)
+    ResSvc->>DB: Tally ballots & turnout
+    ResSvc->>Exporter: generate(headers, rows with formula injection escaping)
+    Exporter-->>Officer: Download sanitized CSV spreadsheet file

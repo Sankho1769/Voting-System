@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor Voter as Authenticated Voter / Officer
+    participant UI as Results Page (app.js)
+    participant API as /api/live_results.php
+    participant ResSvc as ResultsService
+    participant VoteRepo as VotingRepository
+    participant DB as MariaDB / MySQL
+
+    UI->>UI: Interval timer triggers (Every 6 seconds)
+    UI->>API: GET /api/live_results.php?election_id=12
+    API->>API: Verify authenticated session
+    
+    API->>ResSvc: getResults(electionId, currentUser)
+    ResSvc->>DB: Check election status & results_visibility policy
+    
+    alt Policy is 'after_closure_only' AND not Officer/Admin
+        ResSvc-->>API: visible: false ("Standings hidden until closure")
+        API-->>UI: JSON { visible: false }
+    else Policy is 'live_provisional' OR user is Officer/Admin
+        ResSvc->>VoteRepo: getResults(electionId)
+        VoteRepo->>DB: SELECT candidate_id, COUNT(*) FROM votes WHERE election_id = ? GROUP BY candidate_id
+        DB-->>VoteRepo: Aggregate counts
+        VoteRepo->>DB: SELECT COUNT(*) FROM election_eligibility WHERE election_id = ?
+        DB-->>VoteRepo: Eligible total
+        
+        VoteRepo->>VoteRepo: Calculate percentages & turnout %
+        ResSvc-->>API: JSON payload with candidate standings & turnout
+        API-->>UI: 200 OK + JSON { candidates: [...], total_ballots: N, turnout_percentage: X }
+        UI->>UI: Smoothly update DOM vote counts and progress bar widths
+    end

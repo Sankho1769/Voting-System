@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    actor Officer as Election Officer
+    participant UI as Management UI
+    participant Ctrl as Eligibility Controller
+    participant EligSvc as EligibilityService
+    participant ElRepo as ElectionRepository
+    participant EligRepo as EligibilityRepository
+    participant DB as MariaDB / MySQL
+
+    Officer->>UI: Select criteria (Role: student, Department: Computer Science)
+    UI->>Ctrl: POST /admin/eligibility/assign-criteria
+    Ctrl->>EligSvc: assignByCriteria(electionId, role, dept, null, officerId)
+    
+    EligSvc->>ElRepo: findById(electionId)
+    ElRepo->>DB: SELECT status FROM elections WHERE id = ?
+    DB-->>ElRepo: Status check
+    
+    alt Election is Open or later
+        EligSvc-->>Ctrl: Rejection: Eligibility whitelist is locked
+        Ctrl-->>UI: Lock notice
+    else Election is Draft or Scheduled
+        EligSvc->>EligRepo: assignByCriteria(...)
+        EligRepo->>DB: SELECT id FROM users WHERE status = 'active' AND role = ? AND department = ?
+        DB-->>EligRepo: User ID list
+        loop For each user
+            EligRepo->>DB: INSERT IGNORE INTO election_eligibility (election_id, user_id, assigned_by) VALUES (...)
+        end
+        EligRepo-->>EligSvc: Number of enrolled voters
+        EligSvc-->>Ctrl: Success + count
+        Ctrl-->>UI: Whitelist table refreshed
+    end

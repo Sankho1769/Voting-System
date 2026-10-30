@@ -1,0 +1,41 @@
+sequenceDiagram
+    autonumber
+    actor Voter as Eligible Student / Staff
+    participant UI as Ballot UI / Modal
+    participant Ctrl as Ballot Controller
+    participant VoteSvc as VotingService
+    participant VoteRepo as VotingRepository
+    participant DB as MariaDB / MySQL
+    participant Audit as Logger
+
+    Voter->>UI: Select candidate & click "Review & Cast Official Ballot"
+    UI->>UI: Show review modal with candidate name confirmation
+    Voter->>UI: Click "Confirm & Submit Ballot" (Single-submit lock)
+    UI->>Ctrl: POST /ballot (election_id, candidate_id, csrf_token)
+    
+    Ctrl->>VoteSvc: castVote(electionId, candidateId, userId)
+    VoteSvc->>VoteRepo: recordBallot(electionId, candidateId, userId, secret)
+    
+    VoteRepo->>DB: START TRANSACTION
+    VoteRepo->>DB: SELECT id FROM elections WHERE id = ? LOCK IN SHARE MODE
+    Note over VoteRepo,DB: Verify election is 'open' and within server time
+    
+    VoteRepo->>DB: SELECT id FROM candidates WHERE id = ? AND election_id = ? LOCK IN SHARE MODE
+    Note over VoteRepo,DB: Verify candidate belongs to election and is approved
+    
+    VoteRepo->>DB: SELECT id FROM election_eligibility WHERE election_id = ? AND user_id = ? LOCK IN SHARE MODE
+    Note over VoteRepo,DB: Verify voter is on whitelist
+    
+    VoteRepo->>DB: SELECT id FROM election_participation WHERE election_id = ? AND user_id = ? FOR UPDATE
+    Note over VoteRepo,DB: Exclusive row-lock prevents race conditions
+    
+    VoteRepo->>VoteRepo: Generate HMAC-SHA256 confirmation receipt token
+    VoteRepo->>DB: INSERT INTO election_participation (election_id, user_id, confirmation_hash, voted_at) VALUES (...)
+    VoteRepo->>DB: INSERT INTO votes (election_id, candidate_id, cast_at) VALUES (...)
+    Note over VoteRepo,DB: Ballot privacy: NO user_id stored in votes table!
+    
+    VoteRepo->>DB: COMMIT
+    VoteSvc->>Audit: Log participation receipt (Redacted, no candidate choice)
+    VoteSvc-->>Ctrl: Success + confirmation receipt
+    Ctrl-->>UI: Redirect to /confirmation?receipt=xxx
+    UI-->>Voter: Display Verified Ballot Receipt & Hash

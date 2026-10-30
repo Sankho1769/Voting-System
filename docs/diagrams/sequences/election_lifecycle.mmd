@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor Officer as Election Officer / Admin
+    participant UI as Admin Console
+    participant Ctrl as Election Controller
+    participant ElSvc as ElectionService
+    participant CandRepo as CandidateRepository
+    participant ElRepo as ElectionRepository
+    participant DB as MariaDB / MySQL
+
+    Note over Officer,DB: Lifecycle: Draft -> Scheduled -> Open -> Closed -> Results Published
+
+    Officer->>UI: Request transition (e.g., Draft -> Open)
+    UI->>Ctrl: POST /admin/elections/status (id, targetStatus, CSRF)
+    Ctrl->>ElSvc: transitionState(electionId, targetStatus, userId)
+    
+    ElSvc->>ElRepo: findById(electionId)
+    ElRepo->>DB: SELECT * FROM elections WHERE id = ?
+    DB-->>ElRepo: Election record
+    
+    alt Target is 'open' or 'scheduled'
+        ElSvc->>CandRepo: countApproved(electionId)
+        CandRepo->>DB: SELECT COUNT(*) FROM candidates WHERE election_id = ? AND approval_status = 'approved'
+        DB-->>CandRepo: Candidate count
+        
+        alt Approved candidates < 2
+            ElSvc-->>Ctrl: Rejection: At least 2 approved candidates required
+            Ctrl-->>UI: Display candidate requirement warning
+        else Closing time in past
+            ElSvc-->>Ctrl: Rejection: Closing time must be in future
+            Ctrl-->>UI: Display date error
+        else Validation Passed
+            ElSvc->>ElRepo: updateStatus(electionId, targetStatus)
+            ElRepo->>DB: UPDATE elections SET status = ? WHERE id = ?
+            ElSvc-->>Ctrl: Success
+            Ctrl-->>UI: Status updated (Candidate & ballot configuration locked)
+        end
+    end

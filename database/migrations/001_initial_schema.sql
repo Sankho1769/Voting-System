@@ -1,0 +1,3 @@
+-- Migration 001: Initial VerityVote Schema
+-- Applied during fresh setup
+-- Please see database/schema.sql for the full DDL definition.

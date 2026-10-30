@@ -1,0 +1,43 @@
+sequenceDiagram
+    autonumber
+    actor User as Student / Staff / Admin
+    participant UI as Browser / Frontend
+    participant AuthCtrl as Auth Controller (index.php)
+    participant AuthSvc as AuthService
+    participant LoginRepo as LoginAttemptRepository
+    participant UserRepo as UserRepository
+    participant DB as MariaDB / MySQL
+
+    User->>UI: Enter Institutional ID & Password
+    UI->>AuthCtrl: POST /login (ID, Password, CSRF)
+    AuthCtrl->>AuthSvc: login(identifier, password)
+    
+    AuthSvc->>LoginRepo: isThrottled(identifier, ip)
+    LoginRepo->>DB: SELECT COUNT(*) FROM login_attempts (last 15m)
+    DB-->>LoginRepo: Failure count
+    
+    alt Too many failed attempts (>= 5)
+        LoginRepo-->>AuthSvc: True (Throttled)
+        AuthSvc-->>AuthCtrl: 429 Too Many Attempts
+        AuthCtrl-->>UI: Display temporary lockout notice
+    else Not Throttled
+        AuthSvc->>UserRepo: findByIdentifier(identifier)
+        UserRepo->>DB: SELECT * FROM users WHERE identifier = ?
+        DB-->>UserRepo: User record / null
+        
+        alt User not found OR password_verify fails
+            AuthSvc->>LoginRepo: recordAttempt(id, ip, false)
+            AuthSvc-->>AuthCtrl: Generic auth failure
+            AuthCtrl-->>UI: "Invalid institutional credentials"
+        else Credentials Valid
+            AuthSvc->>LoginRepo: recordAttempt(id, ip, true)
+            AuthSvc->>LoginRepo: clearSuccessful(identifier, ip)
+            AuthSvc->>AuthCtrl: Set session (regenerate_id, auth_version)
+            
+            alt must_change_password == 1
+                AuthCtrl-->>UI: Redirect to /change-password
+            else Established Account
+                AuthCtrl-->>UI: Redirect to / (Role Dashboard)
+            end
+        end
+    end

@@ -1,0 +1,17 @@
+flowchart TD
+    Student["Student Voter"]
+    Staff["Staff Voter"]
+    Officer["Election Officer"]
+    Admin["System Administrator"]
+
+    System(["VerityVote Institutional Voting System"])
+
+    Student -->|"Roll No, Password, Ballot Submission"| System
+    Staff -->|"Employee ID, Password, Ballot Submission"| System
+    Officer -->|"Candidate & Eligibility Configurations"| System
+    Admin -->|"Account Provisioning, Election Governance, System Reports"| System
+
+    System -->|"Ballot Receipts, Live Standings, Final Results"| Student
+    System -->|"Ballot Receipts, Live Standings, Final Results"| Staff
+    System -->|"Candidate Approvals, Whitelist Status, Provisional Tallies"| Officer
+    System -->|"Audit Trails, Certified Results CSV, Account Credentials"| Admin

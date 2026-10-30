@@ -1,0 +1,28 @@
+# Local configuration
+config/config.php
+
+# Storage and uploads
+storage/logs/*
+storage/uploads/*
+!storage/uploads/.gitkeep
+!storage/logs/.gitkeep
+
+# Environment and CLI runner helper
+powershell.exe
+
+# Database backups and exports
+database/backups/*
+!database/backups/.gitkeep
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*.swp
+.vscode/
+.idea/
+
+# Distribution archives
+*.zip
+*.tar.gz

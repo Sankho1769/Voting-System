@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    actor Voter as Student Voter
+    participant ClientA as Tab A / Client Request 1
+    participant ClientB as Tab B / Client Request 2 (Concurrent)
+    participant Engine as Voting Engine (PHP + MySQLi)
+    participant DB as Database Transaction & Row Lock
+
+    Note over ClientA,ClientB: Simultaneous submissions by same user for same election
+
+    par Thread A
+        ClientA->>Engine: POST /ballot (Candidate Alpha)
+        Engine->>DB: BEGIN TRANSACTION (Tx 1)
+        Engine->>DB: SELECT * FROM election_participation WHERE user_id = ? FOR UPDATE
+        Note over DB: Tx 1 acquires EXCLUSIVE row lock
+    and Thread B
+        ClientB->>Engine: POST /ballot (Candidate Beta)
+        Engine->>DB: BEGIN TRANSACTION (Tx 2)
+        Engine->>DB: SELECT * FROM election_participation WHERE user_id = ? FOR UPDATE
+        Note over DB: Tx 2 BLOCKS waiting for Tx 1 lock release
+    end
+
+    Note over Engine,DB: Tx 1 proceeds
+    Engine->>DB: INSERT INTO election_participation (election_id, user_id, hash)
+    Engine->>DB: INSERT INTO votes (election_id, candidate_id)
+    Engine->>DB: COMMIT (Tx 1)
+    Note over DB: Lock released. Tx 1 returns Receipt to Client A
+
+    Note over DB: Tx 2 unblocks and reads now-committed row
+    DB-->>Engine: Tx 2 detects existing participation record!
+    Engine->>DB: ROLLBACK (Tx 2)
+    Engine-->>ClientB: 400 Bad Request: "Ballot rejected: You have already cast your vote"

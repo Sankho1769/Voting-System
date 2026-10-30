@@ -1,0 +1,33 @@
+sequenceDiagram
+    autonumber
+    actor Officer as Election Officer
+    participant UI as Management UI
+    participant Ctrl as Candidate Controller
+    participant CandSvc as CandidateService
+    participant ElRepo as ElectionRepository
+    participant CandRepo as CandidateRepository
+    participant FS as Local Storage (/uploads/candidates)
+    participant DB as MariaDB / MySQL
+
+    Officer->>UI: Submit Candidate Form (Name, Manifesto, Photo)
+    UI->>Ctrl: POST /admin/candidates/create (multipart/form-data)
+    Ctrl->>CandSvc: createCandidate(data, file, userId)
+    
+    CandSvc->>ElRepo: findById(electionId)
+    ElRepo->>DB: SELECT status FROM elections WHERE id = ?
+    DB-->>ElRepo: Election status
+    
+    alt Election is Open, Closed, or Published
+        CandSvc-->>Ctrl: Rejection: Ballot is locked
+        Ctrl-->>UI: Display ballot lock warning
+    else Election in Draft or Scheduled
+        opt Photo Uploaded
+            CandSvc->>CandSvc: Validate MIME (finfo), getimagesize, size (<= 2MB), ext
+            CandSvc->>FS: Move file to safe random name cand_xxx.jpg (No execution)
+        end
+        CandSvc->>CandRepo: create(electionId, name, manifesto, photoPath)
+        CandRepo->>DB: INSERT INTO candidates VALUES (...)
+        DB-->>CandRepo: New candidate ID
+        CandSvc-->>Ctrl: Success
+        Ctrl-->>UI: Reload candidates table with new contender
+    end
