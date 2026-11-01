@@ -7,7 +7,9 @@
 - **Three Separate Dedicated Portals**: Distinct login gateways and dashboards for **Admin** (`/login/admin`), **Candidate** (`/login/candidate`), and **Voter** (`/login/voter`), unified under an institutional gateway hub (`/login`).
 - **No Public Self-Registration**: Closed institutional access with accounts created exclusively by college administration using College Roll Numbers and Faculty IDs.
 - **Candidate Control Center**: Contenders track nomination approval status, manifesto statements, opponent directory, and election standings, while preserving dual voter eligibility under a single account.
-- **Editorial Design System**: Distinct visual identity featuring Warm Ivory (`#F9EBD7`), Emerald Green (`#046A38`), and Vermilion (`#E34222`) accents.
+- **Editorial Design System**: Distinct visual identity inspired by high-fashion editorial poster art: Lavender (`#CBA8F5`), Light Lavender (`#E4CCFF`), Deep Royal Purple (`#7026C9`), Bright Purple (`#A749F5`), Electric Neon Lime (`#D7FF36`), Vermilion (`#F04432`), and Near-Black Ink (`#100A18`), with signature 3D ribbon sculpture artwork.
+- **CricHeroes-Style Multi-Election Discovery**: Central election discovery hub (`/explore`) with instant search, category pills (Council, Presidential, Departmental, Class Rep, Clubs, Committees, University, Special Ballots), tabbed scopes, countdown tickers, and match-center details (`/election?id=...`).
+- **Complete Responsive Design & Animations**: Flawless layout across all 11 viewports (320px to 1920px) with zero horizontal overflow at 320px (`scrollWidth === clientWidth`), native-app mobile bottom navigation, and GPU-accelerated CSS keyframe animations.
 - **Strict Single-Position Elections**: Every election represents exactly one institutional office (President, General Secretary, Class Representative).
 - **Deterministic State Machine**: `Draft` &rarr; `Scheduled` &rarr; `Open` &rarr; `Closed` &rarr; `Results Published` with ballot configuration locks once voting opens.
 - **ACID Double-Voting Defense**: Database transactions with row-level locks guarantee each voter participates at most once across concurrent requests.
@@ -81,7 +83,7 @@ Select `verityvote_db` to inspect tables, foreign keys, and indexes.
 ```bash
 C:\xampp\php\php.exe tests/run_tests.php
 ```
-*Expected: 78 Passed | 0 Failed (100% pass rate).*
+*Expected: 139 Passed | 0 Failed (100% pass rate across 9 suites).*
 
 ---
 

@@ -39,11 +39,14 @@ class Session
         $secure = (bool)($config['cookie_secure'] ?? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on'));
         $httponly = (bool)($config['cookie_httponly'] ?? true);
         $samesite = $config['cookie_samesite'] ?? 'Lax';
+        $idleTimeout = (int)($config['idle_timeout'] ?? 1800);
+        $absoluteTimeout = (int)($config['absolute_timeout'] ?? 14400);
 
         if (!headers_sent()) {
             @ini_set('session.use_strict_mode', '1');
             @ini_set('session.use_cookies', '1');
             @ini_set('session.use_only_cookies', '1');
+            @ini_set('session.gc_maxlifetime', (string)max($idleTimeout, $absoluteTimeout));
 
             session_name($cookieName);
 
@@ -67,6 +70,11 @@ class Session
         }
         self::checkTimeouts($config);
         $_SESSION['_last_activity'] = time();
+
+        // Ensure session has a ready CSRF token upon initialization
+        if (!isset($_SESSION['_csrf_token']) || !is_string($_SESSION['_csrf_token']) || strlen($_SESSION['_csrf_token']) < 32) {
+            $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
+        }
     }
 
     private static function checkTimeouts(array $config): void

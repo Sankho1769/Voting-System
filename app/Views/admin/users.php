@@ -50,8 +50,10 @@ $pageTitle = 'Authorized Accounts';
         <label for="status" class="form-label">Status</label>
         <select id="status" name="status" class="form-control">
           <option value="">All Statuses</option>
+          <option value="pending" <?= ($filters['status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending Approval</option>
           <option value="active" <?= ($filters['status'] ?? '') === 'active' ? 'selected' : '' ?>>Active</option>
           <option value="suspended" <?= ($filters['status'] ?? '') === 'suspended' ? 'selected' : '' ?>>Suspended</option>
+          <option value="disabled" <?= ($filters['status'] ?? '') === 'disabled' ? 'selected' : '' ?>>Disabled</option>
           <option value="deactivated" <?= ($filters['status'] ?? '') === 'deactivated' ? 'selected' : '' ?>>Deactivated</option>
         </select>
       </div>

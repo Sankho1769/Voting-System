@@ -15,8 +15,18 @@ $pageTitle = '403 Forbidden';
     <p style="color: var(--color-text-secondary); max-width: 480px; margin: 0 auto 1.5rem auto;">
       <?= Sanitizer::e($message ?? 'You do not have the required institutional authorization to access this resource.') ?>
     </p>
-    <a href="<?= View::url('/') ?>" class="btn btn-secondary">
-      Return to Home Portal
-    </a>
+    <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+      <?php if (!empty($returnUrl)): ?>
+        <a href="<?= Sanitizer::e($returnUrl) ?>" class="btn btn-primary">
+          Try Again
+        </a>
+      <?php endif; ?>
+      <a href="<?= View::url('/login') ?>" class="btn btn-secondary">
+        Return to Login Portals
+      </a>
+      <a href="<?= View::url('/') ?>" class="btn btn-outline">
+        Home
+      </a>
+    </div>
   </div>
 </div>

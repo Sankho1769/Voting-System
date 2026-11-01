@@ -6,14 +6,17 @@ $pageTitle = 'Election Control: ' . $election['title'];
 $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'], true);
 ?>
 
-<div class="container container-wide">
-  <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-    <a href="<?= View::url('/admin/elections') ?>" style="text-decoration: none; font-size: 0.9rem; font-weight: 500;">
+<div class="container container-wide section">
+  <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <a href="<?= View::url('/admin/elections') ?>" style="text-decoration: none; font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 0.35rem;">
       &larr; Back to Elections List
     </a>
-    <div style="display: flex; gap: 0.5rem;">
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <a href="<?= View::url('/election?id=' . $election['id']) ?>" class="btn btn-secondary btn-sm" target="_blank">
+        Public View &rarr;
+      </a>
       <a href="<?= View::url('/results?id=' . $election['id']) ?>" class="btn btn-secondary btn-sm" target="_blank">
-        Preview Standings &rarr;
+        Live Standings &rarr;
       </a>
       <a href="<?= View::url('/admin/reports/csv?id=' . $election['id']) ?>" class="btn btn-secondary btn-sm">
         &darr; Export Tally CSV
@@ -22,20 +25,29 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
   </div>
 
   <!-- Header Banner & State Controls -->
-  <div class="card card-ivory" style="padding: 2rem; margin-bottom: 2rem;">
-    <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+  <div class="card" style="padding: 2.25rem; margin-bottom: 2rem; border-top: 4px solid var(--brand-purple);">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 1.5rem;">
       <div>
-        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-          <span class="badge badge-<?= Sanitizer::e($election['status']) ?>" style="font-size: 0.85rem;">
-            <?= ucfirst(str_replace('_', ' ', $election['status'])) ?>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+          <span class="status-pill <?= Sanitizer::e($election['status']) ?>">
+            <span class="status-dot"></span>
+            <span><?= ucfirst(str_replace('_', ' ', $election['status'])) ?></span>
           </span>
-          <span style="font-size: 0.85rem; color: var(--color-text-secondary);">
+          <span class="badge badge-purple">
+            <?= Sanitizer::e(ucwords(str_replace('_', ' ', $election['category'] ?? 'General'))) ?>
+          </span>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">
             Visibility: <strong><?= $election['results_visibility'] === 'live_provisional' ? 'Live Provisional' : 'Confidential until closure' ?></strong>
           </span>
         </div>
-        <h1 style="font-size: 2.2rem; margin-bottom: 0.25rem;"><?= Sanitizer::e($election['title']) ?></h1>
-        <div style="font-size: 1.15rem; font-weight: 600; color: var(--color-emerald-green);">
-          Office: <?= Sanitizer::e($election['position']) ?>
+        <h1 style="font-family: var(--font-display); font-size: 2.35rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+          <?= Sanitizer::e($election['title']) ?>
+        </h1>
+        <div style="font-size: 1.15rem; font-weight: 600; color: var(--brand-purple);">
+          Contested Office: <?= Sanitizer::e($election['position']) ?>
+          <?php if (!empty($election['department'])): ?>
+            &bull; <span style="color: var(--text-muted);"><?= Sanitizer::e($election['department']) ?></span>
+          <?php endif; ?>
         </div>
       </div>
 
@@ -83,29 +95,29 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
             <?= $csrfField ?>
             <input type="hidden" name="election_id" value="<?= (int)$election['id'] ?>">
             <input type="hidden" name="status" value="cancelled">
-            <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--color-vermilion);">Cancel Election</button>
+            <button type="submit" class="btn btn-outline btn-sm" style="color: var(--vermilion); border-color: var(--vermilion);">Cancel</button>
           </form>
         <?php endif; ?>
       </div>
     </div>
 
     <!-- Quick Stats -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; border-top: 1px solid var(--color-border-medium); padding-top: 1.25rem; font-size: 0.9rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; border-top: 1px solid var(--border-subtle); padding-top: 1.25rem; font-size: 0.9rem;">
       <div>
-        <span style="color: var(--color-text-muted); display: block; font-size: 0.8rem; text-transform: uppercase;">Voting Period</span>
+        <span style="color: var(--text-muted); display: block; font-size: 0.78rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Voting Period</span>
         <strong><?= TimeHelper::format($election['opens_at'], 'd M Y, H:i') ?></strong> &rarr; <strong><?= TimeHelper::format($election['closes_at'], 'd M Y, H:i') ?></strong>
       </div>
       <div>
-        <span style="color: var(--color-text-muted); display: block; font-size: 0.8rem; text-transform: uppercase;">Approved Contenders</span>
+        <span style="color: var(--text-muted); display: block; font-size: 0.78rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Approved Contenders</span>
         <strong><?= count($candidates) ?> candidates</strong>
       </div>
       <div>
-        <span style="color: var(--color-text-muted); display: block; font-size: 0.8rem; text-transform: uppercase;">Eligible Whitelist</span>
+        <span style="color: var(--text-muted); display: block; font-size: 0.78rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Eligible Whitelist</span>
         <strong><?= (int)$election['eligible_voters_count'] ?> voters</strong>
       </div>
       <div>
-        <span style="color: var(--color-text-muted); display: block; font-size: 0.8rem; text-transform: uppercase;">Ballots Accepted</span>
-        <strong style="color: var(--color-emerald-green); font-size: 1.1rem;"><?= (int)$election['total_votes_cast'] ?></strong>
+        <span style="color: var(--text-muted); display: block; font-size: 0.78rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Ballots Accepted</span>
+        <strong style="color: var(--brand-purple); font-size: 1.15rem; font-family: var(--font-mono);"><?= (int)$election['total_votes_cast'] ?></strong>
       </div>
     </div>
   </div>
@@ -113,10 +125,10 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
   <div class="grid grid-2" style="align-items: flex-start; gap: 2rem;">
     <!-- Column 1: Candidate Management -->
     <div>
-      <div class="card">
-        <div class="card-header">
-          <h2>Candidates Contesting</h2>
-          <span style="font-size: 0.85rem; color: var(--color-text-muted);"><?= count($candidates) ?> total</span>
+      <div class="card" style="padding: 1.75rem;">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.25rem;">
+          <h2 style="font-family: var(--font-display); font-size: 1.6rem; margin: 0; color: var(--text-primary);">Candidates Contesting</h2>
+          <span style="font-size: 0.85rem; color: var(--text-muted);"><?= count($candidates) ?> total</span>
         </div>
 
         <?php if ($isLocked): ?>
@@ -127,9 +139,9 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
 
         <div style="margin-bottom: 1.5rem;">
           <?php if (empty($candidates)): ?>
-            <p style="color: var(--color-text-muted); padding: 1rem 0;">No candidates added yet. At least 2 approved candidates are required before opening.</p>
+            <p style="color: var(--text-muted); padding: 1rem 0;">No candidates added yet. At least 2 approved candidates are required before opening.</p>
           <?php else: ?>
-            <div class="table-container" style="border: 1px solid var(--color-border-subtle); margin-bottom: 1rem;">
+            <div class="table-container" style="border: 1px solid var(--border-subtle); margin-bottom: 1rem; border-radius: var(--radius-md);">
               <table class="table">
                 <thead>
                   <tr>
@@ -148,25 +160,25 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
                         <?php if (!empty($cand['photo_path'])): ?>
                           <img src="<?= View::asset($cand['photo_path']) ?>" alt="" style="width: 2.25rem; height: 2.25rem; border-radius: 4px; object-fit: cover;">
                         <?php else: ?>
-                          <div style="width: 2.25rem; height: 2.25rem; background: var(--color-warm-ivory); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--color-emerald-green);">
+                          <div style="width: 2.25rem; height: 2.25rem; background: var(--surface-lavender); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--brand-purple);">
                             <?= strtoupper(substr($cand['name'], 0, 1)) ?>
                           </div>
                         <?php endif; ?>
                         <div>
                           <strong><?= Sanitizer::e($cand['name']) ?></strong>
                           <?php if (!empty($cand['user_identifier'])): ?>
-                            <div style="font-size: 0.75rem; color: var(--color-emerald-green); font-weight: 500;">
+                            <div style="font-size: 0.75rem; color: #16a34a; font-weight: 500;">
                               &check; Linked: <?= Sanitizer::e($cand['user_identifier']) ?>
                             </div>
                           <?php endif; ?>
                         </div>
                       </td>
                       <td>
-                        <span class="badge" style="background-color: <?= $cand['approval_status'] === 'approved' ? 'var(--color-emerald-subtle)' : 'var(--color-vermilion-subtle)' ?>; color: <?= $cand['approval_status'] === 'approved' ? 'var(--color-emerald-dark)' : 'var(--color-vermilion-dark)' ?>;">
+                        <span class="badge badge-purple" style="font-size: 0.72rem;">
                           <?= ucfirst($cand['approval_status']) ?>
                         </span>
                       </td>
-                      <td style="max-width: 200px; font-size: 0.8rem; color: var(--color-text-secondary);">
+                      <td style="max-width: 200px; font-size: 0.8rem; color: var(--text-muted);">
                         <?= Sanitizer::e(substr($cand['manifesto'] ?: 'No manifesto', 0, 60)) ?>...
                       </td>
                       <?php if (!$isLocked): ?>
@@ -175,7 +187,7 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
                             <?= $csrfField ?>
                             <input type="hidden" name="candidate_id" value="<?= (int)$cand['id'] ?>">
                             <input type="hidden" name="election_id" value="<?= (int)$election['id'] ?>">
-                            <button type="submit" class="btn btn-sm btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Delete</button>
+                            <button type="submit" class="btn btn-sm btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; color: var(--vermilion); border-color: var(--vermilion);">Delete</button>
                           </form>
                         </td>
                       <?php endif; ?>
@@ -189,8 +201,8 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
 
         <!-- Add Candidate Form (only if not locked) -->
         <?php if (!$isLocked): ?>
-          <div style="background-color: var(--color-surface-muted); padding: 1.25rem; border-radius: var(--radius-sm);">
-            <h4 style="margin-bottom: 0.85rem;">+ Add Approved Contender</h4>
+          <div style="background-color: var(--surface-secondary); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            <h4 style="font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 0.85rem; color: var(--text-primary);">+ Add Approved Contender</h4>
             <form action="<?= View::url('/admin/candidates/create') ?>" method="POST" enctype="multipart/form-data">
               <?= $csrfField ?>
               <input type="hidden" name="election_id" value="<?= (int)$election['id'] ?>">
@@ -207,11 +219,11 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
                     <?php endforeach; ?>
                   <?php endif; ?>
                 </select>
-                <div class="form-help">Links this candidacy to the student/staff account so they can sign in via Candidate Portal.</div>
+                <div class="form-help" style="color: var(--text-muted);">Links this candidacy to the student/staff account so they can sign in via Candidate Portal.</div>
               </div>
 
               <div class="form-group">
-                <label for="name" class="form-label">Candidate Name <span class="required">*</span></label>
+                <label for="name" class="form-label">Candidate Name <span class="required" style="color: var(--vermilion);">*</span></label>
                 <input type="text" id="name" name="name" class="form-control" required placeholder="e.g. Priyanshu Roy">
               </div>
 
@@ -225,7 +237,7 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
                 <input type="file" id="photo" name="photo" class="form-control" accept="image/jpeg,image/png,image/webp">
               </div>
 
-              <button type="submit" class="btn btn-primary btn-block">Add Candidate</button>
+              <button type="submit" class="btn btn-primary btn-block" style="justify-content: center;">Add Candidate</button>
             </form>
           </div>
         <?php endif; ?>
@@ -234,10 +246,10 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
 
     <!-- Column 2: Voter Eligibility Provisioning -->
     <div>
-      <div class="card">
-        <div class="card-header">
-          <h2>Voter Whitelist</h2>
-          <span style="font-size: 0.85rem; color: var(--color-text-muted);"><?= (int)$election['eligible_voters_count'] ?> assigned</span>
+      <div class="card" style="padding: 1.75rem;">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.25rem;">
+          <h2 style="font-family: var(--font-display); font-size: 1.6rem; margin: 0; color: var(--text-primary);">Voter Whitelist</h2>
+          <span style="font-size: 0.85rem; color: var(--text-muted);"><?= (int)$election['eligible_voters_count'] ?> assigned</span>
         </div>
 
         <?php if ($isLocked): ?>
@@ -248,9 +260,9 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
 
         <!-- Batch Assignment Controls (only if not locked) -->
         <?php if (!$isLocked): ?>
-          <div style="background-color: var(--color-warm-ivory); border: 1px solid var(--color-border-medium); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.5rem;">
-            <h4 style="margin-bottom: 0.5rem;">Whitelist Criteria Assignment</h4>
-            <p style="font-size: 0.825rem; color: var(--color-text-secondary); margin-bottom: 1rem;">
+          <div style="background-color: var(--surface-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 1.5rem;">
+            <h4 style="font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--text-primary);">Whitelist Criteria Assignment</h4>
+            <p style="font-size: 0.825rem; color: var(--text-muted); margin-bottom: 1rem;">
               Quickly authorize voters by institutional role and department.
             </p>
 
@@ -278,7 +290,7 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
                 </div>
               </div>
 
-              <button type="submit" class="btn btn-primary btn-sm btn-block">
+              <button type="submit" class="btn btn-primary btn-sm btn-block" style="justify-content: center;">
                 Authorize Voters by Criteria
               </button>
             </form>
@@ -286,8 +298,8 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
         <?php endif; ?>
 
         <!-- Eligible Voters Table -->
-        <h4>Enrolled Voters</h4>
-        <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+        <h4 style="font-family: var(--font-display); font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.75rem;">Enrolled Voters</h4>
+        <div class="table-container" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
           <table class="table">
             <thead>
               <tr>
@@ -300,7 +312,7 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
             <tbody>
               <?php if (empty($eligibleVoters)): ?>
                 <tr>
-                  <td colspan="4" style="text-align: center; color: var(--color-text-muted); padding: 1.5rem;">
+                  <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
                     No voters enrolled on whitelist yet.
                   </td>
                 </tr>
@@ -310,16 +322,16 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
                     <td><strong><?= Sanitizer::e($voter['identifier']) ?></strong></td>
                     <td>
                       <?= Sanitizer::e($voter['full_name']) ?>
-                      <div style="font-size: 0.75rem; color: var(--color-text-muted);"><?= Sanitizer::e($voter['department'] ?: '—') ?></div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);"><?= Sanitizer::e($voter['department'] ?: '—') ?></div>
                     </td>
                     <td><span class="role-badge" style="font-size: 0.7rem;"><?= Sanitizer::e($voter['role']) ?></span></td>
                     <td>
                       <?php if ((bool)$voter['has_participated']): ?>
-                        <span class="badge" style="background-color: var(--color-emerald-subtle); color: var(--color-emerald-green); font-size: 0.75rem;">
+                        <span class="badge" style="background-color: var(--surface-lavender); color: var(--brand-purple); font-size: 0.75rem; font-weight: 700;">
                           &check; Voted
                         </span>
                       <?php else: ?>
-                        <span style="font-size: 0.8rem; color: var(--color-text-muted);">Awaiting</span>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Awaiting</span>
                       <?php endif; ?>
                     </td>
                   </tr>

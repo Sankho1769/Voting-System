@@ -82,7 +82,7 @@ C:\xampp\php\php.exe bin/create_admin.php ADMIN01 "College Administrator" admin@
    http://localhost/phpmyadmin
    ```
 2. In the left sidebar, click `verityvote_db`.
-3. Inspect all 9 tables: `users`, `elections`, `candidates`, `election_eligibility`, `election_participation`, `votes`, `audit_logs`, `login_attempts`, `migrations`.
+3. Inspect all 10 tables: `users`, `elections`, `candidates`, `election_eligibility`, `election_participation`, `votes`, `audit_logs`, `login_attempts`, `migrations`, `portal_identifier_mappings`.
 
 ### Step 8: Access the Application & Login Portals
 Open your browser and navigate to:
@@ -90,16 +90,17 @@ Open your browser and navigate to:
 http://localhost/Baymax_Voting_System/public/
 ```
 The central gateway displays three dedicated login options:
-- **Admin Login** (`/login/admin`): Sign in using your newly created administrator credentials (`ADMIN01` and the one-time temporary password generated in Step 6). The portal immediately prompts to establish a personal password.
-- **Candidate Login** (`/login/candidate`): Contenders access their personal Candidate Control Center using their Candidate ID or Roll Number.
-- **Voter Login** (`/login/voter`): Student and staff voters access their whitelisted ballot boxes.
+- **Admin Login** (`/login/admin`): Sign in using your administrator credentials (`ADMIN01` or test account `Shubham` with `Shubham56ty2`).
+- **Candidate Login** (`/login/candidate`): Contenders access their personal Candidate Control Center using their Candidate ID (`CAND-xx`), Roll Number, or test account `Shubham`.
+- **Voter Login** (`/login/voter`): Student and staff voters access their whitelisted ballot boxes using Roll Number or test account `Shubham`.
+- **Multi-Election Hub** (`/explore`): Discover and filter active ballots across all 8 campus categories.
 
 ### Step 9: Run the Automated Verification Suite
-To verify all 78 unit, integration, lifecycle, concurrency, three-portal, and HTTP journey tests:
+To verify all 139 unit, integration, lifecycle, concurrency, three-portal, test account, HTTP journey, CSRF session, and master security tests:
 ```bash
 C:\xampp\php\php.exe tests/run_tests.php
 ```
-*Expected: 78 Passed | 0 Failed (100% pass rate).*
+*Expected: 139 Passed | 0 Failed (100% pass rate across 9 suites).*
 
 ---
 

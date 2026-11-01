@@ -66,7 +66,8 @@ $requiredTables = [
     'votes',
     'audit_logs',
     'login_attempts',
-    'migrations'
+    'migrations',
+    'portal_identifier_mappings'
 ];
 
 $existingTables = [];
@@ -117,6 +118,63 @@ if ($colRes && $colRes->num_rows > 0) {
 } else {
     echo "   [PENDING] Applying migration 002_add_candidate_portal_support.sql... ";
     $migFile = dirname(__DIR__) . '/database/migrations/002_add_candidate_portal_support.sql';
+    if (file_exists($migFile)) {
+        $migSql = file_get_contents($migFile);
+        if ($conn->multi_query($migSql)) {
+            do {
+                if ($mRes = $conn->store_result()) { $mRes->free(); }
+            } while ($conn->more_results() && $conn->next_result());
+            echo "[SUCCESS]\n";
+        } else {
+            echo "[FAILED: " . $conn->error . "]\n";
+        }
+    }
+}
+
+$tblRes = $conn->query("SHOW TABLES LIKE 'portal_identifier_mappings'");
+if ($tblRes && $tblRes->num_rows > 0) {
+    echo "   [OK] portal_identifier_mappings table is present (Migration 003 applied)\n";
+} else {
+    echo "   [PENDING] Applying migration 003_add_portal_identifier_mappings.sql... ";
+    $migFile = dirname(__DIR__) . '/database/migrations/003_add_portal_identifier_mappings.sql';
+    if (file_exists($migFile)) {
+        $migSql = file_get_contents($migFile);
+        if ($conn->multi_query($migSql)) {
+            do {
+                if ($mRes = $conn->store_result()) { $mRes->free(); }
+            } while ($conn->more_results() && $conn->next_result());
+            echo "[SUCCESS]\n";
+        } else {
+            echo "[FAILED: " . $conn->error . "]\n";
+        }
+    }
+}
+
+$secRes = $conn->query("SHOW COLUMNS FROM audit_logs LIKE 'correlation_id'");
+if ($secRes && $secRes->num_rows > 0) {
+    echo "   [OK] audit_logs.correlation_id column is present (Migration 004 applied)\n";
+} else {
+    echo "   [PENDING] Applying migration 004_security_hardening.sql... ";
+    $migFile = dirname(__DIR__) . '/database/migrations/004_security_hardening.sql';
+    if (file_exists($migFile)) {
+        $migSql = file_get_contents($migFile);
+        if ($conn->multi_query($migSql)) {
+            do {
+                if ($mRes = $conn->store_result()) { $mRes->free(); }
+            } while ($conn->more_results() && $conn->next_result());
+            echo "[SUCCESS]\n";
+        } else {
+            echo "[FAILED: " . $conn->error . "]\n";
+        }
+    }
+}
+
+$catRes = $conn->query("SHOW COLUMNS FROM elections LIKE 'category'");
+if ($catRes && $catRes->num_rows > 0) {
+    echo "   [OK] elections.category column is present (Migration 005 applied)\n";
+} else {
+    echo "   [PENDING] Applying migration 005_add_election_categories.sql... ";
+    $migFile = dirname(__DIR__) . '/database/migrations/005_add_election_categories.sql';
     if (file_exists($migFile)) {
         $migSql = file_get_contents($migFile);
         if ($conn->multi_query($migSql)) {

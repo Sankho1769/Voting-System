@@ -36,9 +36,6 @@ use App\Services\ResultsService;
 // Initialize Session
 Session::start();
 
-// Enforce CSRF token verification on state mutations
-CsrfMiddleware::handle();
-
 // Resolve Route
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $path = parse_url($requestUri, PHP_URL_PATH);
@@ -54,6 +51,9 @@ if (isset($_GET['route'])) {
     $path = '/' . trim($_GET['route'], '/');
 }
 
+// Enforce CSRF token verification on state mutations with route awareness
+CsrfMiddleware::handle($path);
+
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 // =====================================================================
@@ -64,24 +64,125 @@ switch ($path) {
     // -----------------------------------------------------------------
     // Home Dispatcher
     // -----------------------------------------------------------------
+    // -----------------------------------------------------------------
+    // Home Editorial Landing Page (Reference 1 Visuals + Ref 2 Hub)
+    // -----------------------------------------------------------------
     case '/':
-        if (!Auth::isLoggedIn()) {
-            header('Location: ' . View::url('/login'));
+        $electionRepo = new ElectionRepository();
+        $featuredElections = $electionRepo->getAll();
+        $stats = $electionRepo->getStats();
+
+        View::render('public/home', [
+            'pageTitle' => 'College Voting Platform',
+            'activeNav' => 'home',
+            'featuredElections' => array_slice($featuredElections, 0, 6),
+            'stats' => $stats
+        ]);
+        exit;
+
+    // -----------------------------------------------------------------
+    // Multi-Election Discovery Hub (CricHeroes Architecture)
+    // -----------------------------------------------------------------
+    case '/explore':
+    case '/elections':
+        $electionRepo = new ElectionRepository();
+        $filters = [];
+        if (!empty($_GET['category'])) {
+            $filters['category'] = (string)$_GET['category'];
+        }
+        if (!empty($_GET['department'])) {
+            $filters['department'] = (string)$_GET['department'];
+        }
+        if (!empty($_GET['scope'])) {
+            $filters['scope'] = (string)$_GET['scope'];
+        }
+        if (!empty($_GET['q'])) {
+            $filters['search'] = (string)$_GET['q'];
+        }
+        if (Auth::isLoggedIn()) {
+            $filters['user_id'] = Auth::id();
+        }
+
+        $elections = $electionRepo->getAll($filters);
+        $categories = ElectionService::getCategories();
+        $departments = $electionRepo->getDepartments();
+
+        View::render('public/explore', [
+            'pageTitle' => 'Campus Elections',
+            'activeNav' => 'explore',
+            'elections' => $elections,
+            'categories' => $categories,
+            'departments' => $departments,
+            'activeTab' => $_GET['scope'] ?? 'all'
+        ]);
+        exit;
+
+    // -----------------------------------------------------------------
+    // Dedicated Election Details & Match Center
+    // -----------------------------------------------------------------
+    case '/election':
+    case '/elections/detail':
+        $electionId = (int)($_GET['id'] ?? ($_GET['election_id'] ?? 0));
+        $electionRepo = new ElectionRepository();
+        $election = $electionRepo->findById($electionId);
+
+        if (!$election) {
+            http_response_code(404);
+            View::render('errors/404');
             exit;
         }
-        if (Auth::isAdmin()) {
-            header('Location: ' . View::url('/admin'));
-            exit;
+
+        $candidateRepo = new CandidateRepository();
+        $candidates = $candidateRepo->getByElectionId($electionId, true);
+        
+        $isEligible = false;
+        $hasParticipated = false;
+        if (Auth::isLoggedIn()) {
+            $eligibilityRepo = new EligibilityRepository();
+            $votingRepo = new VotingRepository();
+            $isEligible = $eligibilityRepo->isEligible($electionId, Auth::id());
+            $hasParticipated = $votingRepo->hasParticipated($electionId, Auth::id());
         }
-        if (Auth::isOfficer()) {
-            header('Location: ' . View::url('/officer'));
-            exit;
-        }
-        if (Auth::portal() === 'candidate' || (Auth::isCandidate() && !Auth::isVoter())) {
-            header('Location: ' . View::url('/candidate'));
-            exit;
-        }
-        header('Location: ' . View::url('/voter'));
+
+        View::render('public/election_detail', [
+            'pageTitle' => $election['title'],
+            'activeNav' => 'explore',
+            'election' => $election,
+            'candidates' => $candidates,
+            'isEligible' => $isEligible,
+            'hasParticipated' => $hasParticipated
+        ]);
+        exit;
+
+    // -----------------------------------------------------------------
+    // Public Candidates Directory
+    // -----------------------------------------------------------------
+    case '/candidates':
+        $candidateRepo = new CandidateRepository();
+        $candidates = $candidateRepo->getAllApprovedWithElections($_GET['q'] ?? null, $_GET['category'] ?? null);
+
+        View::render('public/candidates', [
+            'pageTitle' => 'Campus Contenders & Candidates',
+            'activeNav' => 'candidates',
+            'candidates' => $candidates
+        ]);
+        exit;
+
+    // -----------------------------------------------------------------
+    // Information & Support Pages
+    // -----------------------------------------------------------------
+    case '/how-it-works':
+        View::render('public/how_it_works', [
+            'pageTitle' => 'How It Works',
+            'activeNav' => 'how-it-works'
+        ]);
+        exit;
+
+    case '/help':
+        View::render('public/help', [
+            'pageTitle' => 'Help & FAQs',
+            'activeNav' => 'help'
+        ]);
         exit;
 
     // -----------------------------------------------------------------
@@ -228,6 +329,7 @@ switch ($path) {
     case '/logout':
         Auth::logout();
         Session::setFlash('success', 'You have been safely signed out.');
+        CSRF::regenerate();
         header('Location: ' . View::url('/login'));
         exit;
 
@@ -283,7 +385,7 @@ switch ($path) {
 
     case '/ballot':
         VoterMiddleware::handle();
-        $electionId = isset($_GET['id']) ? (int)$_GET['id'] : (int)($_POST['election_id'] ?? 0);
+        $electionId = isset($_GET['id']) ? (int)$_GET['id'] : (int)($_GET['election_id'] ?? ($_POST['election_id'] ?? 0));
 
         $electionRepo = new ElectionRepository();
         $election = $electionRepo->findById($electionId);
@@ -315,6 +417,23 @@ switch ($path) {
 
         if ($method === 'POST') {
             $candidateId = (int)($_POST['candidate_id'] ?? 0);
+
+            // Replay and rapid double-click defense via server-side ballot token
+            $submittedBallotToken = $_POST['ballot_token'] ?? '';
+            $expectedBallotToken = Session::get('_ballot_token_' . $electionId);
+
+            if (!empty($expectedBallotToken) && !hash_equals($expectedBallotToken, $submittedBallotToken)) {
+                Logger::audit('BALLOT_REPLAY_ATTEMPT', 'election', (string)$electionId, [
+                    'reason' => 'Invalid or replayed ballot request token'
+                ], Auth::id());
+                Session::setFlash('error', 'Duplicate ballot submission detected. Each ballot may be submitted only once.');
+                header('Location: ' . View::url('/results?id=' . $electionId));
+                exit;
+            }
+
+            // Immediately invalidate single-use token before entering transaction
+            Session::remove('_ballot_token_' . $electionId);
+
             $votingService = new VotingService();
             $res = $votingService->castVote($electionId, $candidateId, Auth::id());
 
@@ -326,15 +445,20 @@ switch ($path) {
             Session::setFlash('error', $res['error']);
         }
 
+        // Generate fresh cryptographic ballot token for this session & election
+        $ballotToken = bin2hex(random_bytes(16));
+        Session::set('_ballot_token_' . $electionId, $ballotToken);
+
         View::render('student/ballot', [
             'election' => $election,
-            'candidates' => $candidates
+            'candidates' => $candidates,
+            'ballotToken' => $ballotToken
         ]);
         exit;
 
     case '/confirmation':
         AuthMiddleware::handle();
-        $electionId = (int)($_GET['id'] ?? 0);
+        $electionId = (int)($_GET['id'] ?? ($_GET['election_id'] ?? 0));
         $receipt = $_GET['receipt'] ?? '';
 
         $electionRepo = new ElectionRepository();
@@ -356,7 +480,7 @@ switch ($path) {
 
     case '/results':
         AuthMiddleware::handle();
-        $electionId = (int)($_GET['id'] ?? 0);
+        $electionId = (int)($_GET['id'] ?? ($_GET['election_id'] ?? 0));
 
         $resultsService = new ResultsService();
         $data = $resultsService->getResults($electionId, Auth::user());
@@ -454,25 +578,73 @@ switch ($path) {
     case '/admin/users/import':
         RoleMiddleware::handle('admin');
 
+        $preview = null;
         $importResult = null;
+        $accountService = new AccountService();
+
         if ($method === 'POST') {
-            if (empty($_FILES['csv_file']['tmp_name'])) {
-                Session::setFlash('error', 'Please choose a valid CSV file.');
-            } else {
-                $accountService = new AccountService();
-                $importResult = $accountService->importFromCsv($_FILES['csv_file']['tmp_name'], Auth::id());
+            $action = $_POST['action'] ?? 'preview';
+
+            if ($action === 'commit') {
+                $importToken = $_POST['import_token'] ?? '';
+                $importResult = $accountService->commitCsvImport($importToken, Auth::id());
 
                 if ($importResult['success']) {
-                    Session::setFlash('success', "Import processed: {$importResult['imported']} provisioned, {$importResult['skipped']} skipped.");
+                    Session::setFlash('success', "Import committed successfully: {$importResult['imported']} provisioned, {$importResult['skipped']} skipped.");
                 } else {
                     Session::setFlash('error', $importResult['error']);
+                }
+            } else {
+                // Initial upload & preview analysis
+                if (empty($_FILES['csv_file']['tmp_name'])) {
+                    Session::setFlash('error', 'Please choose a valid CSV file to upload.');
+                } else {
+                    $previewRes = $accountService->previewCsv($_FILES['csv_file']['tmp_name']);
+                    if ($previewRes['success']) {
+                        $preview = $previewRes['data'];
+                        if ($preview['accepted_count'] === 0) {
+                            Session::setFlash('warning', "Preview completed: 0 new accounts ready to provision. {$preview['duplicate_db_count']} already exist in database, {$preview['duplicate_file_count']} duplicate within file, {$preview['invalid_count']} invalid.");
+                        } else {
+                            Session::setFlash('info', "Preview ready: {$preview['accepted_count']} accounts valid and ready to provision. Please review the summary and confirm below.");
+                        }
+                    } else {
+                        Session::setFlash('error', $previewRes['error']);
+                    }
                 }
             }
         }
 
         View::render('admin/user_import', [
+            'preview' => $preview,
             'importResult' => $importResult
         ]);
+        exit;
+
+    case '/admin/users/import-errors':
+        RoleMiddleware::handle('admin');
+        $token = $_GET['token'] ?? '';
+        $sessionKey = '_csv_preview_' . $token;
+        $previewData = Session::get($sessionKey);
+
+        if (!$previewData || empty($previewData['issues'])) {
+            Session::setFlash('error', 'No error report available for this import token.');
+            header('Location: ' . View::url('/admin/users/import'));
+            exit;
+        }
+
+        $headers = ['Row', 'Institutional ID', 'Full Name', 'Category', 'Details'];
+        $rows = [];
+        foreach ($previewData['issues'] as $issue) {
+            $rows[] = [
+                $issue['row'],
+                $issue['identifier'],
+                $issue['full_name'],
+                $issue['category'],
+                $issue['details']
+            ];
+        }
+
+        CSVExporter::download('verityvote_import_errors_' . date('Ymd_His') . '.csv', $headers, $rows);
         exit;
 
     case '/admin/users/template':
@@ -674,11 +846,18 @@ switch ($path) {
     case '/admin/audit':
         RoleMiddleware::handle('admin');
 
+        $actionFilter = !empty($_GET['action']) ? trim($_GET['action']) : null;
+        $searchFilter = !empty($_GET['search']) ? trim($_GET['search']) : null;
+
         $auditRepo = new AuditRepository();
-        $logs = $auditRepo->getRecent(100);
+        $logs = $auditRepo->getRecent(100, 0, $actionFilter, $searchFilter);
+        $distinctActions = $auditRepo->getDistinctActions();
 
         View::render('admin/audit_logs', [
-            'logs' => $logs
+            'logs' => $logs,
+            'distinctActions' => $distinctActions,
+            'selectedAction' => $actionFilter,
+            'search' => $searchFilter
         ]);
         exit;
 

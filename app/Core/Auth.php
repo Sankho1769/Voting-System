@@ -101,6 +101,9 @@ class Auth
         ) !== null;
         Session::set('is_candidate', $hasCandidateProfile || ($user['role'] === 'candidate'));
 
+        // Rotate CSRF token on authentication to prevent session fixation / login CSRF
+        CSRF::regenerate();
+
         self::$cachedUser = $user;
     }
 

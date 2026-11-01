@@ -53,16 +53,26 @@ class CandidateRepository
     }
 
     /**
-     * Lookup candidate by candidate identifier (e.g. 'CAND-01', 'CAND1', or integer ID)
+     * Lookup candidate by candidate identifier (e.g. 'CAND-01', 'CAND1', integer ID, or candidate code/name)
      */
     public function findByCandidateIdentifier(string $identifier): ?array
     {
-        $cleanId = preg_replace('/^CAND-?/i', '', trim($identifier));
-        if (!is_numeric($cleanId)) {
-            return null;
+        $trimmed = trim($identifier);
+        $cleanId = preg_replace('/^CAND-?/i', '', $trimmed);
+        if (is_numeric($cleanId)) {
+            $cand = $this->findById((int)$cleanId);
+            if ($cand) {
+                return $cand;
+            }
         }
 
-        return $this->findById((int)$cleanId);
+        // Also check if candidate identifier matches a candidate by name or linked user identifier
+        $sql = "SELECT c.*, u.identifier as user_identifier, u.department as user_department
+                FROM candidates c
+                LEFT JOIN users u ON c.user_id = u.id
+                WHERE u.identifier = ? OR c.name = ?
+                LIMIT 1";
+        return $this->db->fetchOne($sql, [$trimmed, $trimmed], 'ss');
     }
 
     public function getByElectionId(int $electionId, bool $approvedOnly = true): array
@@ -167,5 +177,39 @@ class CandidateRepository
     {
         $sql = "DELETE FROM candidates WHERE id = ?";
         return $this->db->mutate($sql, [$id], 'i') > 0;
+    }
+
+    public function getAllApprovedWithElections(?string $search = null, ?string $category = null): array
+    {
+        $params = [];
+        $types = '';
+        $where = ["c.approval_status = 'approved'", "e.status IN ('scheduled', 'open', 'closed', 'results_published')"];
+
+        if (!empty($category) && $category !== 'all') {
+            $where[] = "e.category = ?";
+            $params[] = $category;
+            $types .= 's';
+        }
+
+        if (!empty($search)) {
+            $term = '%' . $search . '%';
+            $where[] = "(c.name LIKE ? OR c.manifesto LIKE ? OR e.title LIKE ? OR e.position LIKE ?)";
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $types .= 'ssss';
+        }
+
+        $whereClause = implode(' AND ', $where);
+        $sql = "SELECT c.*, e.title as election_title, e.position, e.category, e.department, e.status as election_status,
+                       u.identifier as user_identifier, u.department as user_department
+                FROM candidates c
+                JOIN elections e ON c.election_id = e.id
+                LEFT JOIN users u ON c.user_id = u.id
+                WHERE {$whereClause}
+                ORDER BY e.opens_at DESC, c.display_order ASC, c.name ASC";
+
+        return $this->db->fetchAll($sql, $params, $types);
     }
 }

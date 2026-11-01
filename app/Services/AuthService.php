@@ -73,16 +73,28 @@ class AuthService
             default => 'Invalid institutional credentials. Please check your roll number/employee ID and password.'
         };
 
-        // If in candidate portal, check if user passed Candidate ID prefix (e.g. CAND-1 or numeric)
+        // 1. Resolve via portal-specific identifier mapping (supports portal-scoped login namespaces)
+        $mappedUser = null;
+        if (in_array($portal, ['admin', 'candidate', 'voter'], true)) {
+            $mappedUser = $this->resolvePortalMappedUser($rawIdentifier, $portal);
+            if (!$mappedUser && $identifier !== $rawIdentifier) {
+                $mappedUser = $this->resolvePortalMappedUser($identifier, $portal);
+            }
+        }
+
+        // 2. If in candidate portal and not mapped, check candidate code / ID lookup
         $candidateUser = null;
-        if ($portal === 'candidate' && (stripos($identifier, 'CAND-') === 0 || is_numeric($identifier))) {
-            $candProfile = $this->candidateRepo->findByCandidateIdentifier($identifier);
+        if (!$mappedUser && $portal === 'candidate') {
+            $candProfile = $this->candidateRepo->findByCandidateIdentifier($rawIdentifier);
+            if (!$candProfile && $identifier !== $rawIdentifier) {
+                $candProfile = $this->candidateRepo->findByCandidateIdentifier($identifier);
+            }
             if ($candProfile && !empty($candProfile['user_id'])) {
                 $candidateUser = $this->userRepo->findById((int)$candProfile['user_id']);
             }
         }
 
-        $user = $candidateUser ?? $this->userRepo->findByIdentifier($identifier);
+        $user = $mappedUser ?? $candidateUser ?? $this->userRepo->findByIdentifier($identifier);
 
         if (!$user) {
             $this->loginAttemptRepo->recordAttempt($identifier, $ip, false);
@@ -103,7 +115,9 @@ class AuthService
         // Check account status
         if ($user['status'] !== 'active') {
             $statusMsg = match ($user['status']) {
+                'pending' => 'Your account registration is pending approval by the institutional administrator.',
                 'suspended' => 'Your account has been suspended. Please contact the administrator.',
+                'disabled' => 'Your account has been disabled. Please contact the administrator.',
                 'deactivated' => 'Your account has been deactivated.',
                 default => 'Your account is not active.'
             };
@@ -224,5 +238,34 @@ class AuthService
         Logger::audit('PASSWORD_CHANGED', 'user', (string)$userId, [], $userId);
 
         return ['success' => true];
+    }
+
+    /**
+     * Resolve user via portal-specific identifier namespace mapping
+     */
+    public function resolvePortalMappedUser(string $identifier, string $portal): ?array
+    {
+        $db = Database::getInstance();
+        $tableExists = $db->fetchValue(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'portal_identifier_mappings'"
+        );
+        if (!$tableExists) {
+            return null;
+        }
+
+        $clean = Sanitizer::cleanIdentifier($identifier);
+        $userId = $db->fetchValue(
+            "SELECT user_id FROM portal_identifier_mappings 
+             WHERE portal = ? AND (portal_identifier = ? OR portal_identifier = ?) 
+             LIMIT 1",
+            [$portal, $identifier, $clean],
+            'sss'
+        );
+
+        if ($userId) {
+            return $this->userRepo->findById((int)$userId);
+        }
+
+        return null;
     }
 }

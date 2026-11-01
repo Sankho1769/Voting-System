@@ -2,7 +2,7 @@
 
 ## 1. Architectural Style
 VerityVote is engineered as a layered, modular PHP application following clean architecture principles without heavyweight external frameworks. The system strictly separates concerns into:
-- **Presentation Layer**: HTML5 views, editorial design system CSS (`style.css`), and vanilla JavaScript (`app.js`, `vote.js`).
+- **Presentation Layer**: HTML5 views, editorial design system CSS (`style.css`, `responsive.css`), and vanilla JavaScript (`app.js`, `vote.js`).
 - **Routing & Middleware**: Front controller (`public/index.php`) routing requests through `AuthMiddleware`, `RoleMiddleware`, `CandidateMiddleware`, `VoterMiddleware`, and `CsrfMiddleware`.
 - **Domain Service Layer**: Business logic coordination (`AuthService`, `AccountService`, `ElectionService`, `CandidateService`, `EligibilityService`, `VotingService`, `ResultsService`).
 - **Data Access Layer**: Repositories abstracting SQL queries with MySQLi prepared statements.
@@ -57,7 +57,7 @@ Voting-System/
 │   └── uploads/          # Candidate photos (no script execution)
 ├── tests/                # Automated unit and integration test suite
 │   ├── Unit/
-│   ├── Integration/      # Concurrency, ThreePortalsAuthTest, HttpJourneyTest
+│   ├── Integration/      # Concurrency, ThreePortalsAuthTest, HttpJourneyTest, CsrfPortalLifecycleTest, MasterSecurityTest
 │   └── run_tests.php
 └── docs/                 # Complete system documentation folder
 ```
@@ -73,9 +73,39 @@ Voting-System/
 
 ---
 
-## 4. Concurrency & Transaction Architecture
-Every ballot submission executes inside a strict ACID transaction with row-level locks:
+## 4. Concurrency & Master Security Hardening Architecture (Migration 004)
+Every ballot submission executes inside a strict ACID transaction with row-level locks and replay defense:
 1. `LOCK IN SHARE MODE` on election state and candidate record.
-2. `FOR UPDATE` exclusive lock on user participation row.
-3. Insertion of participant receipt followed by anonymous insertion into the `votes` table.
-4. Atomicity ensures that any failure, conflict, or race condition causes an immediate rollback.
+2. `FOR UPDATE` exclusive lock on voter row in `election_eligibility` whitelist to serialize concurrent submissions per voter.
+3. Verification of 10 atomic server-side pre-conditions (status, role, password state, dates, eligibility, prior participation).
+4. Insertion of cryptographic HMAC-SHA256 receipt into `election_participation` (enforced by `UNIQUE KEY uk_participation_election_user`).
+5. Insertion of unlinked ballot into anonymous `votes` table (contains NO `user_id`).
+6. Atomicity ensures that any failure, conflict, or race condition causes an immediate rollback. Tested and proven with 25 and 100 simultaneous workers yielding exactly 1 accepted ballot and 99 rejected attempts with zero orphan records.
+7. Audit trail records distributed `correlation_id` across all operations while strictly redacting voter candidate choices.
+
+---
+
+## 5. Frontend Responsive & Animation Architecture
+The presentation layer is decoupled into two complementary stylesheets and an event-driven vanilla JavaScript client:
+1. **Master Stylesheet (`public/assets/css/style.css`)**:
+   - Central design tokens, CSS custom properties, and base element styles.
+   - Editorial typography hierarchy (`Instrument Serif`, `Plus Jakarta Sans`, `JetBrains Mono`).
+   - Component definitions for portal cards, election match cards, navigation headers, and modal backdrops.
+2. **Responsive & Media Stylesheet (`public/assets/css/responsive.css`)**:
+   - Grid utilities (`.grid-2`, `.grid-3`, `.grid-4`, `.stats-grid`).
+   - Breakpoint system covering 11 viewports (320px, 360px, 375px, 390px, 430px, 600px, 768px, 1024px, 1280px, 1440px, 1920px).
+   - Strict horizontal overflow containment: `html, body { width: 100%; max-width: 100%; overflow-x: hidden; }` ensuring `scrollWidth === clientWidth` on all screens including 320px.
+   - Pinned mobile bottom navigation bar (`.mobile-bottom-bar`) with 5 core touch targets.
+   - GPU-accelerated CSS keyframe animations:
+     - `@keyframes heroFadeUp`: 0.8s entrance for hero titles and copy.
+     - `@keyframes floatRibbon`: 7s continuous gentle floating movement on signature 3D sculpture.
+     - `@keyframes floatSphere`: Asynchronous 4.5s/5.5s floating loops for neon lime spheres.
+     - `@keyframes orbitSpin`: 45s continuous orbital rotation for lime planetary rings.
+     - `@keyframes cardReveal`: Staggered entrance for cards with progressive animation delays.
+     - `@keyframes pulseLive`: 2s radar pulse for live election pills.
+   - Accessibility compliance: `@media (prefers-reduced-motion: reduce)` disabling all keyframe transforms and forcing instant transitions.
+3. **Interactive Script Layer (`public/assets/js/app.js`)**:
+   - Light/Dark theme switching with persistent `localStorage` synchronization.
+   - CricHeroes live discovery filter engine: real-time multi-attribute search across title, department, position, and candidate names.
+   - Dynamic countdown timer ticker updating time remaining until polls close.
+   - Accessible show/hide password toggle for all login forms.

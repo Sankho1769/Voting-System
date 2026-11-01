@@ -32,6 +32,8 @@ VerityVote is an invitation-free, closed institutional electronic voting platfor
 - **FR-AUTH-08**: The system shall provide three separate dedicated login portals: Admin Login (`/login/admin`), Candidate Login (`/login/candidate`), and Voter Login (`/login/voter`), accessible through a central gateway (`/login`).
 - **FR-AUTH-09**: Role mismatch protection shall be enforced at authentication time: administrative accounts cannot authenticate via the voter portal, student/staff accounts cannot authenticate via the admin portal, and non-candidate accounts cannot authenticate via the candidate portal.
 - **FR-AUTH-10**: The system shall support dual-role authorization for candidates who are also eligible voters using a single institutional user account, allowing seamless sign-in at both `/login/candidate` and `/login/voter` without duplicate accounts.
+- **FR-AUTH-11**: The system shall enforce a 5-state account lifecycle (`pending`, `active`, `suspended`, `disabled`, `deactivated`), rejecting unapproved, suspended, and disabled accounts from logging in or casting ballots.
+- **FR-AUTH-12**: Bulk account provisioning shall support an official CSV pipeline featuring required column validation, in-file duplicate detection, database duplicate detection, a pre-commit confirmation preview, and an exportable error CSV report free of password data.
 
 ### 3.2 Role-Based Access Control
 - **FR-RBAC-01**: Every protected HTTP route and data endpoint shall enforce authorization server-side through dedicated middleware (`AuthMiddleware`, `RoleMiddleware`, `CandidateMiddleware`, `VoterMiddleware`).
@@ -70,6 +72,7 @@ VerityVote is an invitation-free, closed institutional electronic voting platfor
 - **FR-VOTE-03**: Double-voting shall be strictly prevented. Concurrent submissions from the same user across tabs or sessions shall result in exactly one accepted ballot and one rollback.
 - **FR-VOTE-04**: A cryptographic HMAC-SHA256 receipt token shall be generated and recorded in `election_participation` upon acceptance.
 - **FR-VOTE-05**: The ballot choice shall be stored in the anonymous `votes` table, which contains **no `user_id` column**, separating voter participation from candidate choice.
+- **FR-VOTE-06**: Rapid double-clicking and form replays shall be mitigated via single-use server-side ballot tokens (`_ballot_token_$electionId`), backed by serialized row-level locks and unique database constraints capable of handling 25 and 100 concurrent submissions per voter with exactly 1 accepted ballot.
 
 ### 3.7 Results & Reports
 - **FR-RES-01**: Standings shall be calculated server-side from recorded ballots in the database.
@@ -80,7 +83,8 @@ VerityVote is an invitation-free, closed institutional electronic voting platfor
 
 ### 3.8 Audit Trail
 - **FR-AUD-01**: All critical actions (account provisioning, status changes, election state transitions, candidate edits, and ballot participation) shall be recorded in `audit_logs`.
-- **FR-AUD-02**: Audit records shall never contain plain passwords, temporary credentials, or voter-candidate correlation links.
+- **FR-AUD-02**: Audit records shall never contain plain passwords, temporary credentials, or voter-candidate correlation links. Candidate choices shall be strictly redacted from audit payloads.
+- **FR-AUD-03**: Audit records shall store an end-to-end trace correlation ID (`correlation_id`) propagating client HTTP headers or generating a unique request trace.
 
 ---
 

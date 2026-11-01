@@ -98,15 +98,19 @@ class VotingRepository
                     throw new RuntimeException("Selected candidate is not approved for this election.");
                 }
 
-                // 3. Verify user is active and has not been invalidated
+                // 3. Verify user is active, has authorized voter role, and has permanent password
                 $user = $this->db->fetchOne(
-                    "SELECT id, status, must_change_password FROM users WHERE id = ? LOCK IN SHARE MODE",
+                    "SELECT id, status, role, must_change_password FROM users WHERE id = ? LOCK IN SHARE MODE",
                     [$userId],
                     'i'
                 );
 
                 if (!$user || $user['status'] !== 'active') {
-                    throw new RuntimeException("User account is inactive or suspended.");
+                    throw new RuntimeException("User account is inactive, pending approval, suspended, or disabled.");
+                }
+
+                if (!in_array($user['role'], ['student', 'staff', 'candidate'], true)) {
+                    throw new RuntimeException("Unauthorized: Only student, staff, and candidate accounts are authorized to cast ballots.");
                 }
 
                 if ((bool)$user['must_change_password']) {

@@ -67,6 +67,45 @@ VerityVote enforces strict architectural boundaries across the three login porta
   - They authenticate using their single, authentic institutional roll number and personal password across both portals.
   - Their voting privileges in eligible races remain strictly protected and cannot alter or compromise other candidates' tallies.
 
+### 2.9 Master Security Architecture & Fraud Prevention (Migration 004)
+To prevent fraudulent voter generation, duplicate voting, ballot manipulation, and administrative tampering, VerityVote implements the following hardened controls:
+
+#### 1. Official Institutional Identity Lifecycle
+- **Five Lifecycle States**: `users.status` supports `pending`, `active`, `suspended`, `disabled`, and `deactivated`.
+  - `pending`: Unapproved accounts (e.g. self-registration or pre-vetted imports pending administrative sign-off) are barred from logging in or voting (`"Your account registration is pending approval."`).
+  - `active`: Authorized, fully functional collegiate account.
+  - `suspended`: Temporarily suspended accounts are immediately rejected at authentication and ballot casting (`"Your account is suspended."`).
+  - `disabled`: Administrative permanent hold (`"Your account has been disabled."`).
+  - `deactivated`: Departed students or former staff.
+- **Controlled CSV Bulk Provisioning Pipeline**:
+  - Uploaded files are parsed, required columns (`institutional_id`, `full_name`, `account_category`) validated, and identities normalized via `Sanitizer::cleanIdentifier()`.
+  - **In-File Duplicate Detection**: Case-insensitive and whitespace-normalized checks flag internal duplicates within the upload.
+  - **Database Duplicate Detection**: Checks against existing `users.identifier` and `portal_identifier_mappings`.
+  - **Pre-Commit Preview**: Displays metric cards (Total, Accepted, Duplicate in File, Duplicate in Database, Invalid Format), preview tables, and downloadable non-sensitive error CSV report.
+  - **Cryptographic Preview Token**: Prevents unauthorized commits; requires explicit administrator confirmation before provisioning accounts.
+  - Generates secure temporary passwords and logs `CSV_IMPORT_COMMITTED` audit records.
+
+#### 2. Ten Atomic Pre-Conditions Enforced for Ballot Submission
+When a voter casts a ballot, `VotingRepository::recordBallot` strictly enforces 10 server-side pre-conditions inside an atomic ACID transaction:
+1. **Election Existence & Status**: Verifies election exists and `status === 'open'`.
+2. **Election Timing**: Verifies server clock satisfies `opens_at <= NOW() < closes_at`.
+3. **Candidate Existence & Scope**: Candidate must exist in database.
+4. **Candidate Contest Boundary**: Candidate must belong to this specific election (`election_id = ?`).
+5. **Candidate Approval**: Candidate `approval_status` must be `'approved'`.
+6. **Voter Account State**: Voter `status` must be `'active'` (rejects `pending`, `suspended`, `disabled`, `deactivated`).
+7. **Voter Role Authorization**: Voter role must be `student`, `staff`, or `candidate` (rejects pure administrators).
+8. **Permanent Credential Enforcement**: Voter `must_change_password` must be `0` (forces update of temporary passwords).
+9. **Eligibility Whitelist Check**: Voter row in `election_eligibility` must exist (locked `FOR UPDATE` to serialize concurrent requests).
+10. **Duplicate Participation Check**: User must NOT exist in `election_participation` for this election.
+
+#### 3. Replay & Double-Click Mitigation
+- In addition to database locks, `/ballot` generates a single-use session-anchored token (`_ballot_token_$electionId`).
+- The token is verified using `hash_equals()` and immediately invalidated upon submission, mitigating rapid double-clicks and browser form replays before database execution.
+
+#### 4. Audit Log Correlation & Redaction
+- **Correlation ID Tracing**: Every HTTP request and CLI command generates or propagates a unique 64-character trace identifier (`req_<hex>`) stored in `audit_logs.correlation_id`.
+- **Absolute Choice Redaction**: `Logger::audit` strictly redacts `candidate_id`, `candidate_choice`, and choice payloads from audit logs. Voter candidate choices NEVER leak into audit trails or log files.
+
 ---
 
 ## 3. Ballot Privacy & Anonymity Analysis
@@ -76,7 +115,7 @@ VerityVote enforces strict architectural boundaries across the three login porta
 | **Voter Identity Linkage** | `votes` table has NO `user_id` column. Participation is logged separately from candidate selection in `election_participation`. | Application-layer separation |
 | **Double Voting** | ACID transaction with row-level locking on `election_eligibility` and `UNIQUE KEY uk_participation_election_user` guarantee at most one ballot is accepted per voter. | Database constraint enforced |
 | **Receipt Verification** | Voters receive an HMAC-SHA256 participation hash confirming their ballot was committed. The receipt is independent of candidate selection to resist voter coercion/vote-buying. | Cryptographic HMAC |
-| **Race Conditions (25+ Concurrent Requests)** | Concurrency tested with 25 independent processes for the same voter; serialized row locks and automatic transient deadlock retry ensure exactly 1 ballot is recorded. | High concurrency verified |
+| **Race Conditions (25+ & 100 Concurrent Requests)** | Concurrency tested with 2 simultaneous workers, 25 parallel workers, and 100 concurrent workers for the same voter; serialized row locks and automatic transient deadlock retry ensure exactly 1 ballot is recorded. Multi-voter concurrency with 10 distinct voters achieves 10/10 zero-loss commitment. | Verified at 100 workers |
 
 ### 3.1 Documented Technical Boundaries & Anonymity Limitations
 

@@ -8,6 +8,8 @@ namespace App\Core;
  */
 class Logger
 {
+    private static ?string $correlationId = null;
+
     private const REDACTED_KEYS = [
         'password',
         'password_hash',
@@ -15,9 +17,25 @@ class Logger
         'password_confirmation',
         'current_password',
         'new_password',
+        'confirm_password',
         'csrf_token',
-        'token'
+        'token',
+        'cookie',
+        'session_id',
+        'candidate_id',
+        'candidate_choice',
+        'choice'
     ];
+
+    public static function getCorrelationId(): string
+    {
+        if (self::$correlationId === null) {
+            self::$correlationId = $_SERVER['HTTP_X_CORRELATION_ID'] 
+                ?? $_SERVER['HTTP_X_REQUEST_ID'] 
+                ?? ('req_' . bin2hex(random_bytes(8)));
+        }
+        return self::$correlationId;
+    }
 
     public static function audit(
         string $action,
@@ -35,22 +53,24 @@ class Logger
 
             $ip = self::getClientIp();
             $userAgent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'CLI/Unknown', 0, 255);
+            $correlationId = self::getCorrelationId();
             $cleanDetails = self::redactSensitiveData($details);
             $detailsJson = !empty($cleanDetails) ? json_encode($cleanDetails, JSON_UNESCAPED_SLASHES) : null;
 
             $db->execute(
-                "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, ip_address, user_agent, details_json) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [$userId, $action, $entityType, $entityId, $ip, $userAgent, $detailsJson],
-                'issssss'
+                "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, ip_address, user_agent, correlation_id, details_json) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                [$userId, $action, $entityType, $entityId, $ip, $userAgent, $correlationId, $detailsJson],
+                'isssssss'
             );
         } catch (\Throwable $e) {
             self::fileLog('ERROR', 'Failed to write audit log to DB: ' . $e->getMessage());
         }
 
         self::fileLog('AUDIT', sprintf(
-            '[%s] user_id=%s entity=%s:%s ip=%s details=%s',
+            '[%s] req=%s user_id=%s entity=%s:%s ip=%s details=%s',
             $action,
+            self::getCorrelationId(),
             $userId ?? 'anon',
             $entityType,
             $entityId ?? 'none',

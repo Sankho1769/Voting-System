@@ -15,7 +15,7 @@ class AuditRepository
         $this->db = $db ?? Database::getInstance();
     }
 
-    public function getRecent(int $limit = 50, int $offset = 0, ?string $action = null): array
+    public function getRecent(int $limit = 50, int $offset = 0, ?string $action = null, ?string $search = null): array
     {
         $params = [];
         $types = '';
@@ -25,6 +25,17 @@ class AuditRepository
             $where[] = "a.action = ?";
             $params[] = $action;
             $types .= 's';
+        }
+
+        if (!empty($search)) {
+            $where[] = "(a.entity_id LIKE ? OR a.entity_type LIKE ? OR a.correlation_id LIKE ? OR u.identifier LIKE ? OR a.ip_address LIKE ?)";
+            $term = '%' . $search . '%';
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $types .= 'sssss';
         }
 
         $whereClause = implode(' AND ', $where);
@@ -42,7 +53,7 @@ class AuditRepository
         return $this->db->fetchAll($sql, $params, $types);
     }
 
-    public function countAll(?string $action = null): int
+    public function countAll(?string $action = null, ?string $search = null): int
     {
         $params = [];
         $types = '';
@@ -54,7 +65,23 @@ class AuditRepository
             $types .= 's';
         }
 
+        if (!empty($search)) {
+            $where[] = "(a.entity_id LIKE ? OR a.entity_type LIKE ? OR a.correlation_id LIKE ? OR a.ip_address LIKE ?)";
+            $term = '%' . $search . '%';
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $types .= 'ssss';
+        }
+
         $whereClause = implode(' AND ', $where);
-        return (int)$this->db->fetchValue("SELECT COUNT(*) FROM audit_logs WHERE {$whereClause}", $params, $types);
+        return (int)$this->db->fetchValue("SELECT COUNT(*) FROM audit_logs a WHERE {$whereClause}", $params, $types);
+    }
+
+    public function getDistinctActions(): array
+    {
+        $rows = $this->db->fetchAll("SELECT DISTINCT action FROM audit_logs ORDER BY action ASC");
+        return array_column($rows, 'action');
     }
 }

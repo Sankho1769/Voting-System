@@ -29,7 +29,7 @@ CREATE TABLE `users` (
   `academic_year` VARCHAR(16) NULL COMMENT 'e.g. 2024-2027',
   `password_hash` VARCHAR(255) NOT NULL,
   `must_change_password` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1 for temporary credentials requiring first-login change',
-  `status` ENUM('active', 'suspended', 'deactivated') NOT NULL DEFAULT 'active',
+  `status` ENUM('pending', 'active', 'suspended', 'disabled', 'deactivated') NOT NULL DEFAULT 'active',
   `temp_password_expires_at` DATETIME NULL,
   `auth_version` INT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Incremented on password reset/suspension to invalidate active sessions',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -50,6 +50,8 @@ CREATE TABLE `elections` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `title` VARCHAR(191) NOT NULL,
   `position` VARCHAR(128) NOT NULL COMMENT 'e.g. President, General Secretary, Class Representative',
+  `category` VARCHAR(64) NOT NULL DEFAULT 'student_council' COMMENT 'e.g. student_council, college_president, department, class_rep, club_society, committee, university',
+  `department` VARCHAR(64) NULL DEFAULT NULL,
   `description` TEXT NULL,
   `status` ENUM('draft', 'scheduled', 'open', 'closed', 'results_published', 'cancelled') NOT NULL DEFAULT 'draft',
   `opens_at` DATETIME NOT NULL,
@@ -61,6 +63,8 @@ CREATE TABLE `elections` (
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_elections_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT,
   INDEX `idx_elections_status` (`status`),
+  INDEX `idx_elections_category` (`category`),
+  INDEX `idx_elections_department` (`department`),
   INDEX `idx_elections_dates` (`opens_at`, `closes_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -160,12 +164,14 @@ CREATE TABLE `audit_logs` (
   `entity_id` VARCHAR(64) NULL,
   `ip_address` VARCHAR(45) NULL,
   `user_agent` VARCHAR(255) NULL,
+  `correlation_id` VARCHAR(64) NULL,
   `details_json` TEXT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_audit_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   INDEX `idx_audit_user` (`user_id`),
   INDEX `idx_audit_action` (`action`),
+  INDEX `idx_audit_correlation` (`correlation_id`),
   INDEX `idx_audit_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -195,6 +201,24 @@ CREATE TABLE `migrations` (
   `migration` VARCHAR(255) NOT NULL UNIQUE,
   `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- Table: portal_identifier_mappings
+-- Maps visible login identifiers to specific user accounts by portal
+-- (e.g. allowing 'Shubham' to log into admin, candidate, or voter portal).
+-- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS `portal_identifier_mappings`;
+CREATE TABLE `portal_identifier_mappings` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `portal` ENUM('admin', 'candidate', 'voter') NOT NULL,
+  `portal_identifier` VARCHAR(64) NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_portal_identifier` (`portal`, `portal_identifier`),
+  INDEX `idx_portal_user` (`user_id`),
+  CONSTRAINT `fk_portal_map_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

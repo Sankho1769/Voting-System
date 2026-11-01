@@ -52,6 +52,9 @@ class AccountService
         $email = !empty($data['email']) ? filter_var(trim($data['email']), FILTER_VALIDATE_EMAIL) : null;
         $department = Sanitizer::cleanText($data['department'] ?? '');
         $academicYear = Sanitizer::cleanText($data['academic_year'] ?? '');
+        $status = in_array($data['status'] ?? '', ['pending', 'active', 'suspended', 'disabled', 'deactivated'], true)
+            ? $data['status']
+            : 'active';
 
         if (!Validator::validateIdentifier($identifier)) {
             return ['success' => false, 'error' => 'Invalid institutional ID. Must be 3-64 characters and contain only letters, numbers, and dashes.'];
@@ -65,6 +68,7 @@ class AccountService
             return ['success' => false, 'error' => 'Invalid role specified.'];
         }
 
+        // Case-insensitive canonical duplicate identity check
         if ($this->userRepo->findByIdentifier($identifier)) {
             return ['success' => false, 'error' => "An account with institutional ID '{$identifier}' already exists."];
         }
@@ -83,13 +87,14 @@ class AccountService
             'academic_year' => $academicYear ?: null,
             'password_hash' => $passwordHash,
             'must_change_password' => 1,
-            'status' => 'active',
+            'status' => $status,
             'temp_password_expires_at' => $expiresAt
         ]);
 
         Logger::audit('ACCOUNT_CREATED', 'user', (string)$userId, [
             'identifier' => $identifier,
             'role' => $role,
+            'status' => $status,
             'department' => $department,
             'expires_at' => $expiresAt
         ], $adminId);
@@ -106,9 +111,10 @@ class AccountService
     }
 
     /**
-     * Bulk import students or staff from a CSV file
+     * Parse and preview students/staff from a CSV file before committing
+     * Detects in-file duplicates, DB duplicates, and malformed identities.
      */
-    public function importFromCsv(string $filePath, int $adminId): array
+    public function previewCsv(string $filePath): array
     {
         if (!file_exists($filePath) || !is_readable($filePath)) {
             return ['success' => false, 'error' => 'Uploaded CSV file could not be read.'];
@@ -131,104 +137,231 @@ class AccountService
             return ['success' => false, 'error' => 'CSV file is empty.'];
         }
 
-        $header = array_map(function($h) {
-            return strtolower(trim($h));
+        $cleanHeader = array_map(function($h) {
+            $h = strtolower(trim($h));
+            if ($h === 'institutional_id' || $h === 'roll_number' || $h === 'employee_id' || $h === 'voter_id') return 'identifier';
+            if ($h === 'account_category' || $h === 'category') return 'role';
+            if ($h === 'designation') return 'academic_year';
+            return $h;
         }, $header);
 
         $requiredCols = ['identifier', 'role', 'full_name'];
         foreach ($requiredCols as $col) {
-            if (!in_array($col, $header, true)) {
+            if (!in_array($col, $cleanHeader, true)) {
                 fclose($handle);
                 return [
                     'success' => false,
-                    'error' => "Missing required CSV column: '{$col}'. Expected columns: identifier, role, full_name, email, department, academic_year."
+                    'error' => "Missing required CSV column: '{$col}'. Expected columns: identifier (or institutional_id), role (or account_category), full_name, email, department, academic_year (or designation)."
                 ];
             }
         }
 
-        $colMap = array_flip($header);
-        $imported = 0;
-        $skipped = 0;
-        $errors = [];
-        $issuedCredentials = [];
+        $colMap = array_flip($cleanHeader);
+
+        $accepted = [];
+        $duplicatesFile = [];
+        $duplicatesDb = [];
+        $invalid = [];
+        $allIssues = [];
+
+        $seenInFile = [];
         $rowNum = 1;
 
         while (($row = fgetcsv($handle)) !== false) {
             $rowNum++;
             if (empty(array_filter($row))) {
-                continue; // Skip empty line
+                continue;
             }
 
             $rawId = $row[$colMap['identifier']] ?? '';
             $identifier = Sanitizer::cleanIdentifier($rawId);
-            $role = strtolower(trim($row[$colMap['role']] ?? 'student'));
+            $rawRole = strtolower(trim($row[$colMap['role']] ?? 'student'));
+            $role = match ($rawRole) {
+                'student', 'pupil' => 'student',
+                'staff', 'faculty', 'employee', 'teacher' => 'staff',
+                'candidate' => 'candidate',
+                'election_officer', 'officer' => 'election_officer',
+                'admin', 'administrator' => 'admin',
+                default => $rawRole
+            };
             $fullName = Sanitizer::cleanText($row[$colMap['full_name']] ?? '');
             $email = isset($colMap['email']) ? trim($row[$colMap['email']]) : '';
             $department = isset($colMap['department']) ? Sanitizer::cleanText($row[$colMap['department']]) : '';
             $academicYear = isset($colMap['academic_year']) ? Sanitizer::cleanText($row[$colMap['academic_year']]) : '';
 
-            if (empty($identifier) || empty($fullName)) {
-                $errors[] = "Row {$rowNum}: Missing institutional ID or full name.";
-                $skipped++;
-                continue;
-            }
-
-            if (!Validator::validateIdentifier($identifier)) {
-                $errors[] = "Row {$rowNum}: Invalid ID format '{$identifier}'.";
-                $skipped++;
-                continue;
-            }
-
-            if (!in_array($role, ['student', 'staff', 'candidate', 'election_officer', 'admin'], true)) {
-                $errors[] = "Row {$rowNum}: Invalid role '{$role}'.";
-                $skipped++;
-                continue;
-            }
-
-            if ($this->userRepo->findByIdentifier($identifier)) {
-                $errors[] = "Row {$rowNum}: Duplicate ID '{$identifier}' already exists in system.";
-                $skipped++;
-                continue;
-            }
-
-            $res = $this->createUser([
+            $rowData = [
+                'row' => $rowNum,
                 'identifier' => $identifier,
                 'role' => $role,
                 'full_name' => $fullName,
                 'email' => $email,
                 'department' => $department,
                 'academic_year' => $academicYear
+            ];
+
+            // 1. Validation checks
+            if (empty($identifier) || empty($fullName)) {
+                $reason = "Missing required institutional ID or full name";
+                $rowData['reason'] = $reason;
+                $invalid[] = $rowData;
+                $allIssues[] = ['row' => $rowNum, 'identifier' => $rawId, 'full_name' => $fullName, 'category' => 'Invalid Record', 'details' => $reason];
+                continue;
+            }
+
+            if (!Validator::validateIdentifier($identifier)) {
+                $reason = "Invalid institutional ID format (allowed: letters, numbers, dashes, 3-64 chars)";
+                $rowData['reason'] = $reason;
+                $invalid[] = $rowData;
+                $allIssues[] = ['row' => $rowNum, 'identifier' => $identifier, 'full_name' => $fullName, 'category' => 'Invalid Format', 'details' => $reason];
+                continue;
+            }
+
+            if (!in_array($role, ['student', 'staff', 'candidate', 'election_officer', 'admin'], true)) {
+                $reason = "Invalid role '{$rawRole}'. Must be student, staff, or candidate.";
+                $rowData['reason'] = $reason;
+                $invalid[] = $rowData;
+                $allIssues[] = ['row' => $rowNum, 'identifier' => $identifier, 'full_name' => $fullName, 'category' => 'Invalid Role', 'details' => $reason];
+                continue;
+            }
+
+            // 2. In-file duplicate detection (case-insensitive canonical check)
+            $idLower = strtolower($identifier);
+            if (isset($seenInFile[$idLower])) {
+                $prevRow = $seenInFile[$idLower];
+                $reason = "Duplicate institutional ID within CSV (first encountered at Row {$prevRow})";
+                $rowData['reason'] = $reason;
+                $duplicatesFile[] = $rowData;
+                $allIssues[] = ['row' => $rowNum, 'identifier' => $identifier, 'full_name' => $fullName, 'category' => 'In-File Duplicate', 'details' => $reason];
+                continue;
+            }
+            $seenInFile[$idLower] = $rowNum;
+
+            // 3. Database duplicate detection
+            if ($this->userRepo->findByIdentifier($identifier)) {
+                $reason = "Institutional ID '{$identifier}' already provisioned in database";
+                $rowData['reason'] = $reason;
+                $duplicatesDb[] = $rowData;
+                $allIssues[] = ['row' => $rowNum, 'identifier' => $identifier, 'full_name' => $fullName, 'category' => 'Existing Database Account', 'details' => $reason];
+                continue;
+            }
+
+            // Record is accepted and ready to commit
+            $accepted[] = $rowData;
+        }
+
+        fclose($handle);
+
+        $importToken = bin2hex(random_bytes(16));
+        $previewData = [
+            'import_token' => $importToken,
+            'total_rows' => $rowNum - 1,
+            'accepted_count' => count($accepted),
+            'duplicate_file_count' => count($duplicatesFile),
+            'duplicate_db_count' => count($duplicatesDb),
+            'invalid_count' => count($invalid),
+            'accepted' => $accepted,
+            'duplicates_file' => $duplicatesFile,
+            'duplicates_db' => $duplicatesDb,
+            'invalid' => $invalid,
+            'issues' => $allIssues
+        ];
+
+        \App\Core\Session::set('_csv_preview_' . $importToken, $previewData);
+
+        return [
+            'success' => true,
+            'data' => $previewData
+        ];
+    }
+
+    /**
+     * Commit a confirmed CSV import
+     */
+    public function commitCsvImport(string $importToken, int $adminId): array
+    {
+        $sessionKey = '_csv_preview_' . $importToken;
+        $preview = \App\Core\Session::get($sessionKey);
+
+        if (!$preview || empty($preview['accepted'])) {
+            return ['success' => false, 'error' => 'No valid preview found or no accepted records to commit.'];
+        }
+
+        $imported = 0;
+        $issuedCredentials = [];
+        $errors = [];
+
+        foreach ($preview['accepted'] as $row) {
+            $res = $this->createUser([
+                'identifier' => $row['identifier'],
+                'role' => $row['role'],
+                'full_name' => $row['full_name'],
+                'email' => $row['email'],
+                'department' => $row['department'],
+                'academic_year' => $row['academic_year']
             ], $adminId);
 
             if ($res['success']) {
                 $imported++;
                 $issuedCredentials[] = [
-                    'identifier' => $identifier,
-                    'full_name' => $fullName,
-                    'role' => $role,
-                    'department' => $department,
+                    'identifier' => $row['identifier'],
+                    'full_name' => $row['full_name'],
+                    'role' => $row['role'],
+                    'department' => $row['department'],
                     'temp_password' => $res['temp_password'],
                     'expires_at' => $res['expires_at']
                 ];
             } else {
-                $errors[] = "Row {$rowNum}: " . ($res['error'] ?? 'Creation failed');
-                $skipped++;
+                $errors[] = "Row {$row['row']}: {$res['error']}";
             }
         }
 
-        fclose($handle);
+        \App\Core\Session::remove($sessionKey);
 
-        Logger::audit('CSV_IMPORT_COMPLETED', 'system', 'bulk_import', [
+        Logger::audit('CSV_IMPORT_COMMITTED', 'system', 'bulk_import', [
             'imported_count' => $imported,
-            'skipped_count' => $skipped
+            'skipped_count' => $preview['total_rows'] - $imported,
+            'total_file_rows' => $preview['total_rows']
         ], $adminId);
 
         return [
             'success' => true,
             'imported' => $imported,
-            'skipped' => $skipped,
+            'skipped' => $preview['total_rows'] - $imported,
             'errors' => $errors,
             'credentials' => $issuedCredentials
+        ];
+    }
+
+    /**
+     * Direct programmatic bulk import from a CSV file (maintains backward compatibility)
+     */
+    public function importFromCsv(string $filePath, int $adminId): array
+    {
+        $previewRes = $this->previewCsv($filePath);
+        if (!$previewRes['success']) {
+            return $previewRes;
+        }
+
+        $preview = $previewRes['data'];
+        $commitRes = $this->commitCsvImport($preview['import_token'], $adminId);
+
+        $allErrors = [];
+        foreach ($preview['duplicates_file'] as $d) {
+            $allErrors[] = "Row {$d['row']}: {$d['reason']}";
+        }
+        foreach ($preview['duplicates_db'] as $d) {
+            $allErrors[] = "Row {$d['row']}: {$d['reason']}";
+        }
+        foreach ($preview['invalid'] as $inv) {
+            $allErrors[] = "Row {$inv['row']}: {$inv['reason']}";
+        }
+
+        return [
+            'success' => true,
+            'imported' => $commitRes['imported'],
+            'skipped' => $commitRes['skipped'],
+            'errors' => array_merge($allErrors, $commitRes['errors']),
+            'credentials' => $commitRes['credentials']
         ];
     }
 
@@ -264,12 +397,12 @@ class AccountService
     }
 
     /**
-     * Change account status (active, suspended, deactivated)
+     * Change account status (pending, active, suspended, disabled, deactivated)
      */
     public function updateStatus(int $userId, string $status, int $adminId): array
     {
-        if (!in_array($status, ['active', 'suspended', 'deactivated'], true)) {
-            return ['success' => false, 'error' => 'Invalid account status.'];
+        if (!in_array($status, ['pending', 'active', 'suspended', 'disabled', 'deactivated'], true)) {
+            return ['success' => false, 'error' => 'Invalid account status. Expected: pending, active, suspended, disabled, deactivated.'];
         }
 
         $user = $this->userRepo->findById($userId);

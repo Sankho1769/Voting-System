@@ -28,6 +28,8 @@ class ElectionService
     {
         $title = Sanitizer::cleanText($data['title'] ?? '');
         $position = Sanitizer::cleanText($data['position'] ?? '');
+        $category = !empty($data['category']) ? Sanitizer::cleanText($data['category']) : 'student_council';
+        $department = !empty($data['department']) ? Sanitizer::cleanText($data['department']) : null;
         $description = Sanitizer::cleanText($data['description'] ?? '');
         $opensAt = trim($data['opens_at'] ?? '');
         $closesAt = trim($data['closes_at'] ?? '');
@@ -47,6 +49,8 @@ class ElectionService
         $electionId = $this->electionRepo->create([
             'title' => $title,
             'position' => $position,
+            'category' => $category,
+            'department' => $department,
             'description' => $description,
             'status' => 'draft',
             'opens_at' => $opensAt,
@@ -58,6 +62,7 @@ class ElectionService
         Logger::audit('ELECTION_CREATED', 'election', (string)$electionId, [
             'title' => $title,
             'position' => $position,
+            'category' => $category,
             'opens_at' => $opensAt,
             'closes_at' => $closesAt
         ], $userId);
@@ -82,6 +87,8 @@ class ElectionService
 
         $title = Sanitizer::cleanText($data['title'] ?? $election['title']);
         $position = Sanitizer::cleanText($data['position'] ?? $election['position']);
+        $category = !empty($data['category']) ? Sanitizer::cleanText($data['category']) : ($election['category'] ?? 'student_council');
+        $department = array_key_exists('department', $data) ? Sanitizer::cleanText($data['department']) : ($election['department'] ?? null);
         $description = Sanitizer::cleanText($data['description'] ?? $election['description']);
         $opensAt = trim($data['opens_at'] ?? $election['opens_at']);
         $closesAt = trim($data['closes_at'] ?? $election['closes_at']);
@@ -97,6 +104,8 @@ class ElectionService
         $this->electionRepo->update($id, [
             'title' => $title,
             'position' => $position,
+            'category' => $category,
+            'department' => $department,
             'description' => $description,
             'opens_at' => $opensAt,
             'closes_at' => $closesAt,
@@ -162,5 +171,59 @@ class ElectionService
         ], $userId);
 
         return ['success' => true, 'new_status' => $targetState];
+    }
+
+    public static function getCategories(): array
+    {
+        return [
+            'student_council' => [
+                'name' => 'Student Council',
+                'label' => 'Student Council Elections',
+                'desc' => 'Apex collegiate student leadership and executive representation',
+                'badge' => 'badge-council'
+            ],
+            'college_president' => [
+                'name' => 'Presidential',
+                'label' => 'College President Elections',
+                'desc' => 'University & college student body president ballots',
+                'badge' => 'badge-president'
+            ],
+            'department' => [
+                'name' => 'Departmental',
+                'label' => 'Department Elections',
+                'desc' => 'BCA, Computer Science, Commerce and Faculty representation',
+                'badge' => 'badge-dept'
+            ],
+            'class_rep' => [
+                'name' => 'Class Rep',
+                'label' => 'Class Representative Elections',
+                'desc' => 'Batch, semester, and section representative elections',
+                'badge' => 'badge-class'
+            ],
+            'club_society' => [
+                'name' => 'Clubs & Societies',
+                'label' => 'Club & Society Elections',
+                'desc' => 'Sports, cultural, debate, technical, and arts society offices',
+                'badge' => 'badge-club'
+            ],
+            'committee' => [
+                'name' => 'Committees',
+                'label' => 'Committee & Board Elections',
+                'desc' => 'Library, mess, welfare, and disciplinary committees',
+                'badge' => 'badge-committee'
+            ],
+            'university' => [
+                'name' => 'University',
+                'label' => 'University & Senate Elections',
+                'desc' => 'Campus-wide senate and institutional delegate positions',
+                'badge' => 'badge-univ'
+            ],
+            'other' => [
+                'name' => 'Special Ballots',
+                'label' => 'Other Authorized Voting Events',
+                'desc' => 'Campus referendums, special initiatives and student polls',
+                'badge' => 'badge-other'
+            ]
+        ];
     }
 }

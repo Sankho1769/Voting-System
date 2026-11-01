@@ -54,6 +54,16 @@ class CandidateService
 
         $name = Sanitizer::cleanText($data['name'] ?? '');
         $userIdAccount = !empty($data['user_id']) ? (int)$data['user_id'] : null;
+        if ($userIdAccount !== null) {
+            $userRepo = new \App\Repositories\UserRepository();
+            $targetUser = $userRepo->findById($userIdAccount);
+            if (!$targetUser) {
+                return ['success' => false, 'error' => 'Linked user account does not exist.'];
+            }
+            if ($targetUser['role'] === 'admin') {
+                return ['success' => false, 'error' => 'Candidate profiles cannot be linked to administrator accounts.'];
+            }
+        }
         $manifesto = Sanitizer::cleanText($data['manifesto'] ?? '');
         $approvalStatus = in_array($data['approval_status'] ?? '', ['pending', 'approved', 'rejected'], true)
             ? $data['approval_status']

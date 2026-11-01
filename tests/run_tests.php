@@ -14,14 +14,20 @@ require_once __DIR__ . '/Integration/AuthIntegrationTest.php';
 require_once __DIR__ . '/Integration/ElectionLifecycleTest.php';
 require_once __DIR__ . '/Integration/VotingConcurrencyTest.php';
 require_once __DIR__ . '/Integration/ThreePortalsAuthTest.php';
+require_once __DIR__ . '/Integration/TestAccountsAuthTest.php';
 require_once __DIR__ . '/Integration/HttpJourneyTest.php';
+require_once __DIR__ . '/Integration/CsrfPortalLifecycleTest.php';
+require_once __DIR__ . '/Integration/MasterSecurityTest.php';
 
 use Tests\Unit\HelperTest;
 use Tests\Integration\AuthIntegrationTest;
 use Tests\Integration\ElectionLifecycleTest;
 use Tests\Integration\VotingConcurrencyTest;
 use Tests\Integration\ThreePortalsAuthTest;
+use Tests\Integration\TestAccountsAuthTest;
 use Tests\Integration\HttpJourneyTest;
+use Tests\Integration\CsrfPortalLifecycleTest;
+use Tests\Integration\MasterSecurityTest;
 
 echo "========================================================\n";
 echo " VerityVote - Complete Automated Test Suite\n";
@@ -33,7 +39,10 @@ $suites = [
     'Election Lifecycle & Lock Tests' => ElectionLifecycleTest::class,
     'Voting Engine & Concurrency Tests' => VotingConcurrencyTest::class,
     'Three Portals & Role Boundary Integration Tests' => ThreePortalsAuthTest::class,
+    'Three Test Accounts (Shubham) Authentication Tests' => TestAccountsAuthTest::class,
     'HTTP & Browser Real-World Journey Tests' => HttpJourneyTest::class,
+    'CSRF & Portal Session Lifecycle Tests' => CsrfPortalLifecycleTest::class,
+    'Master Security Hardening & Concurrency Tests (Phase 9)' => MasterSecurityTest::class,
 ];
 
 $totalPassed = 0;
