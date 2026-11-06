@@ -62,6 +62,7 @@ VerityVote enforces strict architectural boundaries across the three login porta
   - `RoleMiddleware(['admin', 'election_officer'])` intercepts `/admin/*` routes, immediately denying unauthorized users with `403 Forbidden`.
   - `CandidateMiddleware` protects `/candidate`, ensuring only approved candidates can view candidate dashboards.
   - `VoterMiddleware` protects `/voter` and `/dashboard`, ensuring proper voter context.
+  - In automated testing (`MasterSecurityTest` Tests 31–34), role boundary defenses are continuously verified using dynamic authenticated non-admin voter and candidate sessions against administrative endpoints (`/admin/results/toggle-publish`, `/admin/eligibility/add`, `/admin/users`), validating genuine `HTTP 403 Forbidden` responses.
 - **Dual-Identity Authorization Integrity**:
   - When an authorized collegiate student is nominated and approved as a candidate, their candidate profile is linked via `candidates.user_id = users.id`.
   - They authenticate using their single, authentic institutional roll number and personal password across both portals.

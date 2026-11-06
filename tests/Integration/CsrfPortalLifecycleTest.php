@@ -3,11 +3,14 @@
  * VerityVote - CSRF & Three Portals Session Lifecycle Automated Test Suite
  * Verifies CSRF token generation, session persistence, multi-tab resilience,
  * secure token rotation upon login, and seamless recovery from expired tokens.
+ * Utilizes dynamic test fixtures completely independent of permanent local accounts.
  */
 
 declare(strict_types=1);
 
 namespace Tests\Integration;
+
+use Tests\Support\TestFixtureFactory;
 
 class CsrfPortalLifecycleTest
 {
@@ -75,6 +78,9 @@ class CsrfPortalLifecycleTest
     public function execute(): array
     {
         $results = [];
+        $fixtures = TestFixtureFactory::getSuiteFixtures();
+        $testLoginId = $fixtures['visible_id'];
+        $testPassword = $fixtures['password'];
 
         // -------------------------------------------------------------
         // Test 1: Token persistence across multiple GET requests (Multi-Tab Simulation)
@@ -99,15 +105,15 @@ class CsrfPortalLifecycleTest
         @unlink($sessionCookie);
 
         // -------------------------------------------------------------
-        // Test 2: Admin Portal: GET -> Extract Token -> POST "Shubham" -> 302/303 to /admin
+        // Test 2: Admin Portal: GET -> Extract Token -> POST credentials -> 302/303 to /admin
         // -------------------------------------------------------------
         $adminCookie = tempnam(sys_get_temp_dir(), 'csrf_admin_');
         $adminGet = $this->request('/public/login/admin', 'GET', [], $adminCookie);
         $adminToken = $this->extractCsrf($adminGet['body']);
 
         $adminPost = $this->request('/public/login/admin', 'POST', [
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2',
+            'identifier' => $testLoginId,
+            'password' => $testPassword,
             'csrf_token' => $adminToken
         ], $adminCookie);
 
@@ -115,21 +121,21 @@ class CsrfPortalLifecycleTest
                      && (strpos($adminPost['headers'], '/admin') !== false || strpos($adminPost['headers'], 'Location:') !== false);
 
         $results[] = [
-            'name' => 'Admin Portal Lifecycle: Valid GET -> Token -> POST "Shubham" succeeds with redirect to /admin',
+            'name' => 'Admin Portal Lifecycle: Valid GET -> Token -> POST credentials succeeds with redirect to /admin',
             'pass' => $adminSuccess && !empty($adminToken)
         ];
         @unlink($adminCookie);
 
         // -------------------------------------------------------------
-        // Test 3: Candidate Portal: GET -> Extract Token -> POST "Shubham" -> 302/303 to /candidate
+        // Test 3: Candidate Portal: GET -> Extract Token -> POST credentials -> 302/303 to /candidate
         // -------------------------------------------------------------
         $candCookie = tempnam(sys_get_temp_dir(), 'csrf_cand_');
         $candGet = $this->request('/public/login/candidate', 'GET', [], $candCookie);
         $candToken = $this->extractCsrf($candGet['body']);
 
         $candPost = $this->request('/public/login/candidate', 'POST', [
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2',
+            'identifier' => $testLoginId,
+            'password' => $testPassword,
             'csrf_token' => $candToken
         ], $candCookie);
 
@@ -137,21 +143,21 @@ class CsrfPortalLifecycleTest
                     && (strpos($candPost['headers'], '/candidate') !== false);
 
         $results[] = [
-            'name' => 'Candidate Portal Lifecycle: Valid GET -> Token -> POST "Shubham" succeeds with redirect to /candidate',
+            'name' => 'Candidate Portal Lifecycle: Valid GET -> Token -> POST credentials succeeds with redirect to /candidate',
             'pass' => $candSuccess && !empty($candToken)
         ];
         @unlink($candCookie);
 
         // -------------------------------------------------------------
-        // Test 4: Voter Portal: GET -> Extract Token -> POST "Shubham" -> 302/303 to /voter
+        // Test 4: Voter Portal: GET -> Extract Token -> POST credentials -> 302/303 to /voter
         // -------------------------------------------------------------
         $voterCookie = tempnam(sys_get_temp_dir(), 'csrf_voter_');
         $voterGet = $this->request('/public/login/voter', 'GET', [], $voterCookie);
         $voterToken = $this->extractCsrf($voterGet['body']);
 
         $voterPost = $this->request('/public/login/voter', 'POST', [
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2',
+            'identifier' => $testLoginId,
+            'password' => $testPassword,
             'csrf_token' => $voterToken
         ], $voterCookie);
 
@@ -159,7 +165,7 @@ class CsrfPortalLifecycleTest
                      && (strpos($voterPost['headers'], '/voter') !== false);
 
         $results[] = [
-            'name' => 'Voter Portal Lifecycle: Valid GET -> Token -> POST "Shubham" succeeds with redirect to /voter',
+            'name' => 'Voter Portal Lifecycle: Valid GET -> Token -> POST credentials succeeds with redirect to /voter',
             'pass' => $voterSuccess && !empty($voterToken)
         ];
         @unlink($voterCookie);
@@ -172,8 +178,8 @@ class CsrfPortalLifecycleTest
 
         // Simulate submitting with a completely expired / tampered token
         $expiredPost = $this->request('/public/login/candidate', 'POST', [
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2',
+            'identifier' => $testLoginId,
+            'password' => $testPassword,
             'csrf_token' => 'expired_token_00000000000000000000000000000000'
         ], $staleCookie);
 
@@ -196,8 +202,8 @@ class CsrfPortalLifecycleTest
 
         // Submit with the fresh token
         $recoveryPost = $this->request('/public/login/candidate', 'POST', [
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2',
+            'identifier' => $testLoginId,
+            'password' => $testPassword,
             'csrf_token' => $freshToken
         ], $staleCookie);
 
@@ -217,8 +223,8 @@ class CsrfPortalLifecycleTest
         $this->request('/public/login/admin', 'GET', [], $missingCookie);
 
         $missingPost = $this->request('/public/login/admin', 'POST', [
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2'
+            'identifier' => $testLoginId,
+            'password' => $testPassword
             // No csrf_token provided
         ], $missingCookie);
 
@@ -253,8 +259,8 @@ class CsrfPortalLifecycleTest
         $preLoginToken = $this->extractCsrf($preLoginGet['body']);
 
         $loginPost = $this->request('/public/login/voter', 'POST', [
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2',
+            'identifier' => $testLoginId,
+            'password' => $testPassword,
             'csrf_token' => $preLoginToken
         ], $rotCookie);
 

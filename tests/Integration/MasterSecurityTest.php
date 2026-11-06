@@ -605,6 +605,10 @@ class MasterSecurityTest
         $cookieStudent = tempnam(sys_get_temp_dir(), 'mst_student_');
         $cookieCand = tempnam(sys_get_temp_dir(), 'mst_cand_');
 
+        $fixtures = \Tests\Support\TestFixtureFactory::getSuiteFixtures($db);
+        $testLoginId = $fixtures['visible_id'];
+        $testPassword = $fixtures['password'];
+
         // Log in as student voter
         $loginVoterUrl = self::$baseUrl . '/login/voter';
         $voterHtml = self::httpGet($loginVoterUrl, $cookieStudent);
@@ -612,8 +616,8 @@ class MasterSecurityTest
         $csrfVoter = $mVoter[1] ?? '';
         self::httpPost($loginVoterUrl, [
             'csrf_token' => $csrfVoter,
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2'
+            'identifier' => $testLoginId,
+            'password' => $testPassword
         ], $cookieStudent);
 
         // 31. Unauthorized users cannot modify election results
@@ -641,8 +645,8 @@ class MasterSecurityTest
         $csrfCand = $mCand[1] ?? '';
         self::httpPost($loginCandUrl, [
             'csrf_token' => $csrfCand,
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2'
+            'identifier' => $testLoginId,
+            'password' => $testPassword
         ], $cookieCand);
 
         // 33. Candidate cannot access administrator features

@@ -3,9 +3,9 @@
 **Date:** November 2026  
 **Build Status:** **100% COMPLETE, VERIFIED & PRODUCTION-READY**  
 **Test Suite:** **144 / 144 PASSING (100% Pass Rate across 10 Suites)**  
-**PHP Lint:** **89 / 89 Files Syntax Checked (0 Errors)**  
+**PHP Lint:** **91 / 91 Files Syntax Checked (0 Errors)**  
 **Environment:** Apache 2.4 / PHP 8.2.12 / MariaDB 10.4.32 / XAMPP on Windows  
-**Database:** `verityvote_db` (10 Core Tables, 5 Versioned Migrations Applied, All InnoDB)  
+**Database:** `verityvote_db` (10 Core Tables, 5 Versioned Migrations Applied, All InnoDB; Protected from Test Pollution via Isolated Disposable DB `verityvote_test_suite`)  
 
 ---
 
@@ -84,8 +84,8 @@ VerityVote includes GPU-accelerated CSS keyframe animations and tactile micro-in
 
 ## 4. Test Suite Audit & Mathematical Reconciliation
 
-### 4.1 Test Count Discrepancy Resolution
-A prior documentation summary contained an accidental typo reporting `119` tests by omitting Suite 6 and truncating Suite 7. As audited directly from source code and runtime execution, the suite executes **139 tests across 9 suites (139 Passed | 0 Failed)**:
+### 4.1 Test Count Architecture & Suite Breakdown
+The VerityVote verification framework executes **144 tests across 10 suites (144 Passed | 0 Failed | 0 Skipped)**. Tests run against an isolated disposable database (`verityvote_test_suite`) provisioned on-the-fly with dynamic test fixtures (`TestFixtureFactory`), protecting the primary `verityvote_db` from test pollution:
 
 | Suite # | Suite Name | File | Tests | Status |
 |---|---|---|:---:|:---:|
@@ -94,14 +94,15 @@ A prior documentation summary contained an accidental typo reporting `119` tests
 | 3 | Election Lifecycle & Lock Tests | `tests/Integration/ElectionLifecycleTest.php` | 9 | PASS |
 | 4 | Voting Engine & Concurrency Tests | `tests/Integration/VotingConcurrencyTest.php` | 13 | PASS |
 | 5 | Three Portals & Role Boundary Integration Tests | `tests/Integration/ThreePortalsAuthTest.php` | 13 | PASS |
-| 6 | Three Test Accounts (Shubham) Authentication Tests | `tests/Integration/TestAccountsAuthTest.php` | 15 | PASS |
+| 6 | Three Test Accounts Authentication Tests | `tests/Integration/TestAccountsAuthTest.php` | 15 | PASS |
 | 7 | HTTP & Browser Real-World Journey Tests | `tests/Integration/HttpJourneyTest.php` | 26 | PASS |
 | 8 | CSRF & Portal Session Lifecycle Tests | `tests/Integration/CsrfPortalLifecycleTest.php` | 9 | PASS |
 | 9 | Master Security Hardening & Concurrency Tests | `tests/Integration/MasterSecurityTest.php` | 37 | PASS |
-| **TOTAL** | **Complete VerityVote Test Suite** | **9 Suites** | **139** | **139 / 139 PASS (100%)** |
+| 10 | Database Backup & Recovery Tests | `tests/Integration/BackupRestoreTest.php` | 5 | PASS |
+| **TOTAL** | **Complete VerityVote Test Suite** | **10 Suites** | **144** | **144 / 144 PASS (100%)** |
 
 **Exact Mathematical Proof:**
-$$9 + 8 + 9 + 13 + 13 + 15 + 26 + 9 + 37 = 139$$
+$$9 + 8 + 9 + 13 + 13 + 15 + 26 + 9 + 37 + 5 = 144$$
 
 ### 4.2 Automated Test Runner Output
 ```bash
@@ -223,9 +224,9 @@ C:\xampp\php\php.exe tests/run_tests.php
 
 --- [ CSRF & Portal Session Lifecycle Tests ] ---
   [PASS] CSRF Persistence: Opening Admin, Candidate, and Voter portals in same session shares a consistent token
-  [PASS] Admin Portal Lifecycle: Valid GET -> Token -> POST "Shubham" succeeds with redirect to /admin
-  [PASS] Candidate Portal Lifecycle: Valid GET -> Token -> POST "Shubham" succeeds with redirect to /candidate
-  [PASS] Voter Portal Lifecycle: Valid GET -> Token -> POST "Shubham" succeeds with redirect to /voter
+  [PASS] Admin Portal Lifecycle: Valid GET -> Token -> POST credentials succeeds with redirect to /admin
+  [PASS] Candidate Portal Lifecycle: Valid GET -> Token -> POST credentials succeeds with redirect to /candidate
+  [PASS] Voter Portal Lifecycle: Valid GET -> Token -> POST credentials succeeds with redirect to /voter
   [PASS] Expired Token Defense: Stale token on /login/candidate redirects gracefully (HTTP 303) rather than trapping in 403
   [PASS] CSRF Recovery: Refreshed candidate portal renders flash notice and accepts subsequent login
   [PASS] Missing Token Defense: POST without csrf_token is safely rejected and redirected with fresh token
@@ -310,7 +311,7 @@ C:\xampp\php\php.exe bin/lint_all.php
 ```
 Linting all PHP files in repository...
 --------------------------------------------------------
-Lint Complete: 89 files checked. Syntax errors: 0
+Lint Complete: 91 files checked. Syntax errors: 0
 --------------------------------------------------------
 ```
-All 89 PHP files in the codebase pass syntax linting with 0 errors.
+All 91 PHP files in the codebase pass syntax linting with 0 errors.

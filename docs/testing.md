@@ -10,9 +10,11 @@ php tests/run_tests.php
 
 ---
 
-## 2. Audited Test Suite Breakdown (139 Tests Across 9 Suites)
+## 2. Audited Test Suite Breakdown (144 Tests Across 10 Suites)
 
-Every test executes in sequence and validates against MySQL/MariaDB and the HTTP server. The complete suite contains exactly **139 passed tests** across 9 specialized suites:
+Every test executes in sequence and validates against MySQL/MariaDB and the HTTP server. The verification suite runs against an isolated disposable database (`verityvote_test_suite`) provisioned on-the-fly with dynamic fixtures (`TestFixtureFactory`), ensuring zero pollution and zero risk of accidental dropping or alteration of the primary production database (`verityvote_db`).
+
+The complete suite contains exactly **144 passed tests** across 10 specialized suites:
 
 | Suite # | Suite Name | File | Tests | Status |
 |---|---|---|:---:|:---:|
@@ -21,15 +23,15 @@ Every test executes in sequence and validates against MySQL/MariaDB and the HTTP
 | 3 | Election Lifecycle & Lock Tests | `tests/Integration/ElectionLifecycleTest.php` | 9 | PASS |
 | 4 | Voting Engine & Concurrency Tests | `tests/Integration/VotingConcurrencyTest.php` | 13 | PASS |
 | 5 | Three Portals & Role Boundary Integration Tests | `tests/Integration/ThreePortalsAuthTest.php` | 13 | PASS |
-| 6 | Three Test Accounts (Shubham) Authentication Tests | `tests/Integration/TestAccountsAuthTest.php` | 15 | PASS |
+| 6 | Three Test Accounts Authentication Tests | `tests/Integration/TestAccountsAuthTest.php` | 15 | PASS |
 | 7 | HTTP & Browser Real-World Journey Tests | `tests/Integration/HttpJourneyTest.php` | 26 | PASS |
 | 8 | CSRF & Portal Session Lifecycle Tests | `tests/Integration/CsrfPortalLifecycleTest.php` | 9 | PASS |
 | 9 | Master Security Hardening & Concurrency Tests | `tests/Integration/MasterSecurityTest.php` | 37 | PASS |
-| **TOTAL** | **Complete VerityVote Test Suite** | **9 Suites** | **139** | **139 / 139 PASS (100%)** |
+| 10 | Database Backup & Recovery Tests | `tests/Integration/BackupRestoreTest.php` | 5 | PASS |
+| **TOTAL** | **Complete VerityVote Test Suite** | **10 Suites** | **144** | **144 / 144 PASS (100%)** |
 
 ### Mathematical Verification of Test Count
-Prior documentation contained an accidental omission where Suite 6 (15 tests) and partial counts from Suite 7 were truncated in log reports, creating a typographical sum of 119 in an earlier status summary. As audited directly from source code and runtime execution:
-$$\text{Total} = 9 + 8 + 9 + 13 + 13 + 15 + 26 + 9 + 37 = 139$$
+$$\text{Total} = 9 + 8 + 9 + 13 + 13 + 15 + 26 + 9 + 37 + 5 = 144$$
 Every single test is accounted for, executes without skipping, and passes 100%.
 
 ---
@@ -92,15 +94,16 @@ Every single test is accounted for, executes without skipping, and passes 100%.
 - **Candidate Dashboard Retrieval**: Retrieves candidate profile, opponents, and dual status.
 - **Session Security**: Logout explicitly invalidates all authentication session tokens.
 
-### 3.6 Three Test Accounts (Shubham) Authentication Tests (15 Tests)
-- **Admin Portal**: Visible login ID `Shubham` with provisioned test credential signs in to Administrator portal.
-- **Candidate Portal**: Visible login ID `Shubham` with provisioned test credential signs in to Candidate portal.
-- **Candidate Syntax**: Candidate ID syntax (`CAND-260`) signs in to Candidate portal.
-- **Voter Portal**: Visible login ID `Shubham` with provisioned test credential signs in to Voter portal.
-- **Password Security**: Incorrect password with `Shubham` rejected across all 3 portals.
+### 3.6 Three Test Accounts Authentication Tests (15 Tests)
+- **Dynamic Test Fixture Provisioning**: Generated cleanly on-the-fly inside the disposable test database (`verityvote_test_suite`) via `TestFixtureFactory`. Zero dependency on permanent database accounts.
+- **Admin Portal**: Dynamic visible login ID with provisioned test credential signs in to Administrator portal.
+- **Candidate Portal**: Dynamic visible login ID with provisioned test credential signs in to Candidate portal.
+- **Candidate Syntax**: Candidate ID syntax (`CAND-xx`) signs in to Candidate portal.
+- **Voter Portal**: Dynamic visible login ID with provisioned test credential signs in to Voter portal.
+- **Password Security**: Incorrect password rejected across all 3 portals.
 - **Bcrypt Hash Verification**: Passwords verified as valid bcrypt `$2y$` hashes.
-- **RBAC Boundaries**: Cross-portal mismatch tests for test accounts.
-- **Profile Attachment**: Verifies Candidate profile correctly links to `Shubham` candidate account.
+- **RBAC Boundaries**: Cross-portal mismatch tests and role enforcement for test accounts.
+- **Profile Attachment**: Verifies Candidate profile correctly links to dynamically created candidate account.
 
 ### 3.7 HTTP & Browser Real-World Journey Tests (26 Tests)
 - **Directory Protection (5 Tests)**: Direct HTTP access to `/app/`, `/config/`, `/database/`, `/storage/logs/`, `/bin/` is denied (HTTP 403).
@@ -131,8 +134,15 @@ Comprehensive automated suite covering all 37 security controls:
 - **Ballot Box & Double-Voting (Tests 13-17)**: First vote accepted; second/third rejected; cross-tab duplicate rejection; simultaneous submission race defense (1 accepted, 1 rejected).
 - **High Concurrency & ACID Integrity (Tests 18-22)**: 25 concurrent connections produce 1 accepted ballot; 100 concurrent connections produce 1 accepted ballot; 10 distinct voters vote simultaneously (10/10); transactional ACID rollback on failure; participation receipts count == valid ballots count.
 - **Tamper Resistance (Tests 23-28)**: Forged candidate ID rejected; cross-election candidate ID rejected; forged election ID rejected; forged browser-side user ID rejected; unauthenticated direct API rejected; replayed submission rejected.
-- **Injection & RBAC (Tests 29-34)**: Invalid CSRF rejected (HTTP 403); SQL injection defense via prepared statements; unauthorized result tampering blocked; unauthorized eligibility modification blocked; candidate/voter privilege escalation blocked.
+- **Injection & RBAC (Tests 29-34)**: Invalid CSRF rejected (HTTP 403); SQL injection defense via prepared statements; unauthorized result tampering blocked (HTTP 403 verified via authenticated non-admin session); unauthorized eligibility modification blocked (HTTP 403); candidate privilege escalation blocked (HTTP 403); voter privilege escalation blocked (HTTP 403).
 - **Audit Ledger & Secrecy (Tests 35-37)**: Correlation IDs in audit logs; complete ballot secrecy (candidate choices never in audit logs); mathematical verification of results == valid ballots (10 = 10).
+
+### 3.10 Database Backup & Recovery Tests (5 Tests)
+- **Backup Utility (`bin/backup_db.php`)**: Exports complete database schema and data into a standalone, valid SQL archive.
+- **Safety Safeguard**: Validates that restoring to an active database without the explicit `--confirm` flag is strictly rejected.
+- **Automated Restore (`bin/restore_db.php`)**: Restores database snapshot into a designated target database.
+- **Schema & Data Verification**: Validates that restored database contains all 10 core tables, foreign keys, and rows.
+- **Clean Teardown**: Automatically removes temporary backup files and drops the temporary test database.
 
 ---
 
@@ -147,6 +157,6 @@ Output:
 ========================================================
  VerityVote - Complete Automated Test Suite
 ========================================================
-Test Execution Summary: 139 Passed | 0 Failed
+Test Execution Summary: 144 Passed | 0 Failed | 0 Skipped
 ========================================================
 ```

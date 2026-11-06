@@ -96,11 +96,12 @@ The central gateway displays three dedicated login options:
 - **Multi-Election Hub** (`/explore`): Discover and filter active ballots across all 8 campus categories.
 
 ### Step 9: Run the Automated Verification Suite
-To verify all 139 unit, integration, lifecycle, concurrency, three-portal, test account, HTTP journey, CSRF session, and master security tests:
+To verify all 144 unit, integration, lifecycle, concurrency, three-portal, test account, HTTP journey, CSRF session, master security, and backup/restore tests:
 ```bash
 C:\xampp\php\php.exe tests/run_tests.php
 ```
-*Expected: 139 Passed | 0 Failed (100% pass rate across 9 suites).*
+*Expected: 144 Passed | 0 Failed | 0 Skipped (100% pass rate across 10 suites).*
+*(Note: Tests run safely against an isolated disposable database `verityvote_test_suite` and dynamic fixtures `TestFixtureFactory`, leaving the primary `verityvote_db` untouched).*
 
 ---
 

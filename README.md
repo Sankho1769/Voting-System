@@ -83,7 +83,8 @@ Select `verityvote_db` to inspect tables, foreign keys, and indexes.
 ```bash
 C:\xampp\php\php.exe tests/run_tests.php
 ```
-*Expected: 144 Passed | 0 Failed (100% pass rate across 10 suites).*
+*Expected: 144 Passed | 0 Failed | 0 Skipped (100% pass rate across 10 suites).*
+*(Runs against isolated disposable database `verityvote_test_suite` with dynamic test fixtures, keeping primary database untouched).*
 
 ---
 

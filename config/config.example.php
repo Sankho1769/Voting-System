@@ -6,6 +6,15 @@
  * For production, ensure debug is false and secure cookies are enabled.
  */
 
+$databaseName = 'verityvote_db';
+$testOverrideFile = dirname(__DIR__) . '/storage/.test_database_override';
+if (file_exists($testOverrideFile)) {
+    $overrideVal = trim((string)@file_get_contents($testOverrideFile));
+    if ($overrideVal === 'verityvote_test_suite') {
+        $databaseName = 'verityvote_test_suite';
+    }
+}
+
 return [
     'app' => [
         'name' => 'VerityVote',
@@ -20,7 +29,7 @@ return [
     'database' => [
         'host' => '127.0.0.1',
         'port' => 3306,
-        'database' => 'verityvote_db',
+        'database' => $databaseName,
         'username' => 'root',
         'password' => '',
         'charset' => 'utf8mb4',

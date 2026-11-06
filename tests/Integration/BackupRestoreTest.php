@@ -39,14 +39,15 @@ class BackupRestoreTest
         
         $phpBin = PHP_BINARY;
         $backupScript = dirname(__DIR__, 2) . '/bin/backup_db.php';
+        $activeDb = $this->db->fetchOne("SELECT DATABASE() as db")['db'] ?? 'verityvote_test_suite';
         
-        $cmd = escapeshellcmd("{$phpBin} {$backupScript} verityvote_db {$this->tempBackupFile}");
+        $cmd = escapeshellcmd("{$phpBin} {$backupScript} {$activeDb} {$this->tempBackupFile}");
         $output = shell_exec($cmd);
 
         $exists = file_exists($this->tempBackupFile);
         $size = $exists ? filesize($this->tempBackupFile) : 0;
         
-        $success = $exists && $size > 50000 && strpos((string)$output, 'Backup Status:   SUCCESS') !== false;
+        $success = $exists && $size > 5000 && strpos((string)$output, 'Backup Status:   SUCCESS') !== false;
 
         return ['name' => $testName, 'pass' => $success];
     }
@@ -57,9 +58,10 @@ class BackupRestoreTest
 
         $phpBin = PHP_BINARY;
         $restoreScript = dirname(__DIR__, 2) . '/bin/restore_db.php';
+        $activeDb = $this->db->fetchOne("SELECT DATABASE() as db")['db'] ?? 'verityvote_test_suite';
 
         // Intentionally omit --confirm targeting active DB
-        $cmd = escapeshellcmd("{$phpBin} {$restoreScript} {$this->tempBackupFile} verityvote_db");
+        $cmd = escapeshellcmd("{$phpBin} {$restoreScript} {$this->tempBackupFile} {$activeDb}");
         $output = shell_exec($cmd);
 
         $rejected = strpos((string)$output, 'RESTORE SAFETY CONFIRMATION REQUIRED') !== false;

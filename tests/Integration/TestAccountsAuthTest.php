@@ -1,4 +1,13 @@
 <?php
+/**
+ * VerityVote - Dedicated Portal Authentication Tests
+ * 
+ * Validates cross-portal authentication, candidate ID syntax, dual candidate/voter authorization,
+ * password hash verification, and HTTP role boundaries using isolated dynamic fixtures.
+ */
+
+declare(strict_types=1);
+
 namespace Tests\Integration;
 
 use App\Core\Auth;
@@ -9,7 +18,7 @@ use App\Repositories\EligibilityRepository;
 use App\Repositories\VotingRepository;
 use App\Services\AuthService;
 use App\Services\CandidateService;
-use App\Services\VotingService;
+use Tests\Support\TestFixtureFactory;
 
 class TestAccountsAuthTest
 {
@@ -17,82 +26,93 @@ class TestAccountsAuthTest
     {
         $results = [];
         $db = Database::getInstance();
-        $authService = new AuthService();
-        $userRepo = new UserRepository();
-        $candidateRepo = new CandidateRepository();
-        $eligibilityRepo = new EligibilityRepository();
-        $votingRepo = new VotingRepository();
-        $candidateService = new CandidateService();
+        $fixtures = TestFixtureFactory::getSuiteFixtures($db);
 
-        // 1. Verify Admin Login with visible ID Shubham
-        $adminRes = $authService->login('Shubham', 'Shubham56ty2', 'admin');
+        $authService = new AuthService();
+        $userRepo = new UserRepository($db);
+        $candidateRepo = new CandidateRepository($db);
+        $eligibilityRepo = new EligibilityRepository($db);
+        $candidateService = new CandidateService($candidateRepo);
+
+        $visibleId = $fixtures['visible_id'];
+        $password = $fixtures['password'];
+        $adminId = (int)$fixtures['admin_id'];
+        $voterId = (int)$fixtures['voter_id'];
+        $candIdSyntax = $fixtures['candidate_id_syntax'];
+        $testElectionId = (int)$fixtures['election_id'];
+
+        // 1. Verify Admin Login with visible ID
+        $adminRes = $authService->login($visibleId, $password, 'admin');
+        $adminUser = $adminRes['user'] ?? null;
         $results[] = [
-            'name' => 'Admin Portal: Visible ID "Shubham" logs in as Administrator',
-            'pass' => $adminRes['success'] === true && $adminRes['user']['role'] === 'admin'
+            'name' => "Admin Portal: Visible ID \"{$visibleId}\" logs in as Administrator",
+            'pass' => $adminRes['success'] === true && is_array($adminUser) && ($adminUser['role'] ?? '') === 'admin' && (int)$adminUser['id'] === $adminId
         ];
 
-        // 2. Verify Candidate Login with visible ID Shubham
-        $candRes = $authService->login('Shubham', 'Shubham56ty2', 'candidate');
+        // 2. Verify Candidate Login with visible ID
+        $candRes = $authService->login($visibleId, $password, 'candidate');
+        $candUser = $candRes['user'] ?? null;
         $results[] = [
-            'name' => 'Candidate Portal: Visible ID "Shubham" logs in as Candidate',
-            'pass' => $candRes['success'] === true && (int)$candRes['user']['id'] !== (int)$adminRes['user']['id']
+            'name' => "Candidate Portal: Visible ID \"{$visibleId}\" logs in as Candidate",
+            'pass' => $candRes['success'] === true && is_array($candUser) && (int)$candUser['id'] === $voterId && (int)$candUser['id'] !== $adminId
         ];
 
         // 3. Verify Candidate Login with Candidate ID syntax (e.g. CAND-xx)
-        $candProfile = $candidateRepo->findByUserId((int)$candRes['user']['id']);
-        $candIdSyntax = !empty($candProfile) ? 'CAND-' . $candProfile[0]['id'] : '';
-        $candIdRes = !empty($candIdSyntax) ? $authService->login($candIdSyntax, 'Shubham56ty2', 'candidate') : ['success' => false];
+        $candIdRes = $authService->login($candIdSyntax, $password, 'candidate');
+        $candIdUser = $candIdRes['user'] ?? null;
         $results[] = [
             'name' => "Candidate Portal: Candidate ID syntax ({$candIdSyntax}) logs into candidate account",
-            'pass' => $candIdRes['success'] === true && (int)$candIdRes['user']['id'] === (int)$candRes['user']['id']
+            'pass' => $candIdRes['success'] === true && is_array($candIdUser) && (int)$candIdUser['id'] === $voterId
         ];
 
-        // 4. Verify Voter Login with visible ID Shubham
-        $voterRes = $authService->login('Shubham', 'Shubham56ty2', 'voter');
+        // 4. Verify Voter Login with visible ID
+        $voterRes = $authService->login($visibleId, $password, 'voter');
+        $voterUser = $voterRes['user'] ?? null;
         $results[] = [
-            'name' => 'Voter Portal: Visible ID "Shubham" logs in as Eligible Voter',
-            'pass' => $voterRes['success'] === true && $voterRes['user']['role'] === 'student' && (int)$voterRes['user']['id'] === (int)$candRes['user']['id']
+            'name' => "Voter Portal: Visible ID \"{$visibleId}\" logs in as Eligible Voter",
+            'pass' => $voterRes['success'] === true && is_array($voterUser) && ($voterUser['role'] ?? '') === 'student' && (int)$voterUser['id'] === $voterId
         ];
 
         // 5. Verify Invalid Passwords rejected with generic message
-        $badAdmin = $authService->login('Shubham', 'WrongPass999', 'admin');
-        $badCand = $authService->login('Shubham', 'WrongPass999', 'candidate');
-        $badVoter = $authService->login('Shubham', 'WrongPass999', 'voter');
+        $badAdmin = $authService->login($visibleId, 'WrongPass999', 'admin');
+        $badCand = $authService->login($visibleId, 'WrongPass999', 'candidate');
+        $badVoter = $authService->login($visibleId, 'WrongPass999', 'voter');
         $results[] = [
-            'name' => 'Security: Incorrect password with "Shubham" rejected across all 3 portals',
+            'name' => "Security: Incorrect password with \"{$visibleId}\" rejected across all 3 portals",
             'pass' => !$badAdmin['success'] && !$badCand['success'] && !$badVoter['success']
         ];
 
         // 6. Verify Passwords Stored as Bcrypt Hashes (not plaintext)
-        $adminDb = $userRepo->findById((int)$adminRes['user']['id']);
-        $voterDb = $userRepo->findById((int)$voterRes['user']['id']);
-        $isHashed = str_starts_with($adminDb['password_hash'], '$2y$') &&
-                    str_starts_with($voterDb['password_hash'], '$2y$') &&
-                    $adminDb['password_hash'] !== 'Shubham56ty2';
+        $adminDb = $userRepo->findById($adminId);
+        $voterDb = $userRepo->findById($voterId);
+        $adminHash = (string)($adminDb['password_hash'] ?? '');
+        $voterHash = (string)($voterDb['password_hash'] ?? '');
+        $isHashed = str_starts_with($adminHash, '$2y$') &&
+                    str_starts_with($voterHash, '$2y$') &&
+                    $adminHash !== $password;
         $results[] = [
             'name' => 'Security: Credentials stored securely as bcrypt hashes',
             'pass' => $isHashed
         ];
 
-        // 7. Verify Candidate Dashboard Data for Shubham
-        $dashboardData = $candidateService->getCandidateDashboardData((int)$voterRes['user']['id']);
+        // 7. Verify Candidate Dashboard Data
+        $dashboardData = $candidateService->getCandidateDashboardData($voterId);
         $hasApprovedProfile = !empty($dashboardData['profiles']) &&
-                              $dashboardData['profiles'][0]['candidacy']['approval_status'] === 'approved';
+                              ($dashboardData['profiles'][0]['candidacy']['approval_status'] ?? '') === 'approved';
         $results[] = [
             'name' => 'Candidate Control Center: Renders approved candidacy, election and manifesto',
             'pass' => $hasApprovedProfile && !empty($dashboardData['profiles'][0]['candidacy']['manifesto'])
         ];
 
-        // 8. Verify Dual Authorization Banner Recognition
+        // 8. Verify Dual Authorization Recognition
         $results[] = [
             'name' => 'Dual Authorization: Candidate dashboard recognizes user as an eligible voter',
-            'pass' => !empty($dashboardData['is_eligible_voter']) && $dashboardData['eligible_elections_count'] >= 1
+            'pass' => !empty($dashboardData['is_eligible_voter']) && ($dashboardData['eligible_elections_count'] ?? 0) >= 1
         ];
 
         // 9. Verify Voter Eligibility Isolation (Whitelisted for test election only)
-        $testElectionId = !empty($dashboardData['profiles']) ? (int)$dashboardData['profiles'][0]['candidacy']['election_id'] : 0;
-        $isEligibleTest = $eligibilityRepo->isEligible($testElectionId, (int)$voterRes['user']['id']);
-        $isEligibleOther = $eligibilityRepo->isEligible(999999, (int)$voterRes['user']['id']);
+        $isEligibleTest = $eligibilityRepo->isEligible($testElectionId, $voterId);
+        $isEligibleOther = $eligibilityRepo->isEligible(999999, $voterId);
         $results[] = [
             'name' => 'Voter Whitelist: Whitelisted only for assigned election, rejected for unassigned races',
             'pass' => $isEligibleTest && !$isEligibleOther
@@ -100,12 +120,9 @@ class TestAccountsAuthTest
 
         // 10. Verify Real HTTP Journeys via Apache cURL
         $baseUrl = 'http://127.0.0.1/Baymax_Voting_System/public';
-        $cookieAdmin = sys_get_temp_dir() . '/cookie_admin_shubham.txt';
-        $cookieCand = sys_get_temp_dir() . '/cookie_cand_shubham.txt';
-        $cookieVoter = sys_get_temp_dir() . '/cookie_voter_shubham.txt';
-        @unlink($cookieAdmin);
-        @unlink($cookieCand);
-        @unlink($cookieVoter);
+        $cookieAdmin = tempnam(sys_get_temp_dir(), 'ck_adm_');
+        $cookieCand = tempnam(sys_get_temp_dir(), 'ck_cnd_');
+        $cookieVoter = tempnam(sys_get_temp_dir(), 'ck_vtr_');
 
         // HTTP Admin Login Journey
         $loginAdminUrl = $baseUrl . '/login/admin';
@@ -115,14 +132,14 @@ class TestAccountsAuthTest
 
         $postAdmin = self::httpPost($loginAdminUrl, [
             'csrf_token' => $csrfAdmin,
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2'
+            'identifier' => $visibleId,
+            'password' => $password
         ], $cookieAdmin);
 
         $adminDashHtml = self::httpGet($baseUrl . '/admin', $cookieAdmin);
         $results[] = [
-            'name' => 'HTTP Journey: Admin portal sign-in with "Shubham" opens /admin dashboard (200 OK)',
-            'pass' => strpos($postAdmin['headers'], '302') !== false &&
+            'name' => "HTTP Journey: Admin portal sign-in with \"{$visibleId}\" opens /admin dashboard (200 OK)",
+            'pass' => in_array($postAdmin['code'], [302, 303]) &&
                       strpos($adminDashHtml, 'Administrator') !== false
         ];
 
@@ -148,14 +165,14 @@ class TestAccountsAuthTest
 
         $postCand = self::httpPost($loginCandUrl, [
             'csrf_token' => $csrfCand,
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2'
+            'identifier' => $visibleId,
+            'password' => $password
         ], $cookieCand);
 
         $candDashHtml = self::httpGet($baseUrl . '/candidate', $cookieCand);
         $results[] = [
-            'name' => 'HTTP Journey: Candidate portal sign-in with "Shubham" opens /candidate Control Center (200 OK)',
-            'pass' => strpos($postCand['headers'], '302') !== false &&
+            'name' => "HTTP Journey: Candidate portal sign-in with \"{$visibleId}\" opens /candidate Control Center (200 OK)",
+            'pass' => in_array($postCand['code'], [302, 303]) &&
                       strpos($candDashHtml, 'Candidate Control Center') !== false
         ];
 
@@ -174,14 +191,14 @@ class TestAccountsAuthTest
 
         $postVoter = self::httpPost($loginVoterUrl, [
             'csrf_token' => $csrfVoter,
-            'identifier' => 'Shubham',
-            'password' => 'Shubham56ty2'
+            'identifier' => $visibleId,
+            'password' => $password
         ], $cookieVoter);
 
         $voterDashHtml = self::httpGet($baseUrl . '/voter', $cookieVoter);
         $results[] = [
-            'name' => 'HTTP Journey: Voter portal sign-in with "Shubham" opens /voter dashboard (200 OK)',
-            'pass' => strpos($postVoter['headers'], '302') !== false &&
+            'name' => "HTTP Journey: Voter portal sign-in with \"{$visibleId}\" opens /voter dashboard (200 OK)",
+            'pass' => in_array($postVoter['code'], [302, 303]) &&
                       (strpos($voterDashHtml, 'Institutional Elections') !== false || strpos($voterDashHtml, 'Member Elections Portal') !== false)
         ];
 
