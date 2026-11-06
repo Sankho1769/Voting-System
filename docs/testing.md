@@ -93,10 +93,10 @@ Every single test is accounted for, executes without skipping, and passes 100%.
 - **Session Security**: Logout explicitly invalidates all authentication session tokens.
 
 ### 3.6 Three Test Accounts (Shubham) Authentication Tests (15 Tests)
-- **Admin Portal**: Visible login ID `Shubham` with `Shubham56ty2` signs in to Administrator portal.
-- **Candidate Portal**: Visible login ID `Shubham` with `Shubham56ty2` signs in to Candidate portal.
+- **Admin Portal**: Visible login ID `Shubham` with provisioned test credential signs in to Administrator portal.
+- **Candidate Portal**: Visible login ID `Shubham` with provisioned test credential signs in to Candidate portal.
 - **Candidate Syntax**: Candidate ID syntax (`CAND-260`) signs in to Candidate portal.
-- **Voter Portal**: Visible login ID `Shubham` with `Shubham56ty2` signs in to Voter portal.
+- **Voter Portal**: Visible login ID `Shubham` with provisioned test credential signs in to Voter portal.
 - **Password Security**: Incorrect password with `Shubham` rejected across all 3 portals.
 - **Bcrypt Hash Verification**: Passwords verified as valid bcrypt `$2y$` hashes.
 - **RBAC Boundaries**: Cross-portal mismatch tests for test accounts.

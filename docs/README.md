@@ -6,7 +6,7 @@ Welcome to the comprehensive documentation directory for the **VerityVote** Inst
 - [architecture.md](architecture.md) — Multi-tier software architecture, layering, and directory boundaries.
 - [database-design.md](database-design.md) — Relational schema specification, tables, keys, indexes, and ACID transaction rules.
 - [security.md](security.md) — Application security controls, OWASP ASVS alignment, and threat analysis.
-- [UI_UX.md](UI_UX.md) — Visual design system, color tokens (`#F9EBD7`, `#046A38`, `#E34222`), typography, and components.
+- [UI_UX.md](UI_UX.md) — Visual design system, color tokens (Lavender `#CBA8F5`, Deep Purple `#7026C9`, Electric Lime `#D7FF36`, Vermilion `#F04432`), typography, 11-viewport responsive architecture, and CSS animations.
 
 ## Specifications & Requirements
 - [PRD.md](PRD.md) — Product Requirements Document, target personas, and scope.

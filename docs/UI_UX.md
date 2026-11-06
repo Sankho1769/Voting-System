@@ -77,7 +77,7 @@ VerityVote combines two distinct inspirations:
 
 ### 4.5 Three Login Portals (`/login`, `/login/admin`, `/login/candidate`, `/login/voter`)
 - Consistent styling with password toggle, CSRF protection, and role mismatch gatekeepers.
-- Supports test credentials (`Shubham` / `Shubham56ty2`).
+- Supports administrator-provisioned accounts and local test account credentials (e.g., provisioned via `bin/seed_test_accounts.php <id> <password>`).
 
 ---
 

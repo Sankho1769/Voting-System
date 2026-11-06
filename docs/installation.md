@@ -90,9 +90,9 @@ Open your browser and navigate to:
 http://localhost/Baymax_Voting_System/public/
 ```
 The central gateway displays three dedicated login options:
-- **Admin Login** (`/login/admin`): Sign in using your administrator credentials (`ADMIN01` or test account `Shubham` with `Shubham56ty2`).
-- **Candidate Login** (`/login/candidate`): Contenders access their personal Candidate Control Center using their Candidate ID (`CAND-xx`), Roll Number, or test account `Shubham`.
-- **Voter Login** (`/login/voter`): Student and staff voters access their whitelisted ballot boxes using Roll Number or test account `Shubham`.
+- **Admin Login** (`/login/admin`): Sign in using your administrator credentials (`ADMIN01` and the one-time temporary password generated in Step 6, or local test account provisioned via `bin/seed_test_accounts.php <id> <password>`).
+- **Candidate Login** (`/login/candidate`): Contenders access their personal Candidate Control Center using their Candidate ID (`CAND-xx`), Roll Number, or local candidate test account.
+- **Voter Login** (`/login/voter`): Student and staff voters access their whitelisted ballot boxes using Roll Number or local voter test account.
 - **Multi-Election Hub** (`/explore`): Discover and filter active ballots across all 8 campus categories.
 
 ### Step 9: Run the Automated Verification Suite

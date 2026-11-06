@@ -30,6 +30,7 @@ $excludedExact = [
 
 $excludedPrefixes = [
     str_replace('\\', '/', $rootDir . '/.git'),
+    str_replace('\\', '/', $rootDir . '/screenshots'),
 ];
 
 $dirIterator = new RecursiveDirectoryIterator($rootDir, RecursiveDirectoryIterator::SKIP_DOTS);
@@ -46,7 +47,7 @@ foreach ($iterator as $item) {
         continue;
     }
 
-    // Check prefix exclusions (.git)
+    // Check prefix exclusions (.git, screenshots)
     $skip = false;
     foreach ($excludedPrefixes as $prefix) {
         if (strpos($itemPath, $prefix) === 0) {
@@ -68,8 +69,13 @@ foreach ($iterator as $item) {
         continue;
     }
 
-    // Skip temporary packaging script itself if desired, or keep in bin
-    if (basename($relativePath) === 'package_clean_distribution.php') {
+    // Skip database backup files (preserve .gitkeep)
+    if (preg_match('#database/backups/.+#i', $relativePath) && basename($relativePath) !== '.gitkeep') {
+        continue;
+    }
+
+    // Skip temporary archive files or OS metadata
+    if (preg_match('/\.(zip|tar|gz|tmp|bak|swp|DS_Store)$/i', $relativePath) || basename($relativePath) === 'Thumbs.db') {
         continue;
     }
 
@@ -103,10 +109,12 @@ if ($verifyZip->open($zipFile) === true) {
     $hasSchema = ($verifyZip->locateName('database/schema.sql') !== false);
     $hasPublicIndex = ($verifyZip->locateName('public/index.php') !== false);
     $hasTests = ($verifyZip->locateName('tests/run_tests.php') !== false);
+    $hasScreenshots = ($verifyZip->locateName('screenshots/desktop/home_1440.png') !== false);
     
     echo "  - Contains config.example.php: " . ($hasExampleConfig ? "[OK]" : "[MISSING]") . "\n";
     echo "  - Excluded config.php (local secrets): " . (!$hasConfig ? "[OK - Excluded]" : "[LEAK DETECTED]") . "\n";
     echo "  - Excluded powershell.exe: " . (!$hasPowershell ? "[OK - Excluded]" : "[LEAK DETECTED]") . "\n";
+    echo "  - Excluded local screenshots: " . (!$hasScreenshots ? "[OK - Excluded]" : "[LEAK DETECTED]") . "\n";
     echo "  - Contains database/schema.sql: " . ($hasSchema ? "[OK]" : "[MISSING]") . "\n";
     echo "  - Contains public/index.php: " . ($hasPublicIndex ? "[OK]" : "[MISSING]") . "\n";
     echo "  - Contains full test suite: " . ($hasTests ? "[OK]" : "[MISSING]") . "\n";

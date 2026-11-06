@@ -32,7 +32,7 @@ The entire application is completely responsive across all screen sizes without 
 
 | Viewport Width | Device Category | Verification Evidence |
 |---|---|---|
-| **320px** | Ultra-compact phone (iPhone SE / legacy) | **PASS** — Zero horizontal overflow (`scrollWidth == clientWidth = 489px`). Fluid 2.15rem typography, single-column cards, 56px fixed bottom app navigation. |
+| **320px** | Ultra-compact phone (iPhone SE / legacy) | **PASS** — Zero horizontal overflow (`scrollWidth == clientWidth`). Fluid 2.15rem typography, single-column cards, 56px fixed bottom app navigation. |
 | **360px** | Standard compact Android | **PASS** — Scaled 2.25rem headline, 0.75rem container padding, compact portal cards. |
 | **375px** | iPhone mini | **PASS** — Fluid card layout, full-width CTA pill buttons, horizontal-scroll category bar. |
 | **390px** | iPhone 14 / modern Android | **PASS** — Verified via `screenshots/responsive/home_390.png`. Full-fidelity mobile layout with top header and bottom nav. |
