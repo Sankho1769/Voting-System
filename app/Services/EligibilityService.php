@@ -21,6 +21,12 @@ class EligibilityService
         $this->electionRepo = $electionRepo ?? new ElectionRepository();
     }
 
+    public function isEligible(int $electionId, int $userId): bool
+    {
+        // ARCHITECTURAL INVARIANT (Phase 12): Must never read from cache. Direct repository lookup.
+        return $this->eligibilityRepo->isEligible($electionId, $userId);
+    }
+
     public function assignVoters(int $electionId, array $userIds, int $adminId): array
     {
         $election = $this->electionRepo->findById($electionId);

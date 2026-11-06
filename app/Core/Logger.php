@@ -79,10 +79,61 @@ class Logger
         ));
     }
 
-    public static function error(string $message, array $context = []): void
+    public static function error(string $message, array $context = [], ?string $errorCategory = 'GENERAL_ERROR'): void
     {
         $details = !empty($context) ? ' ' . json_encode(self::redactSensitiveData($context), JSON_UNESCAPED_SLASHES) : '';
         self::fileLog('ERROR', $message . $details);
+        self::structured('ERROR', $message, $context, $errorCategory);
+    }
+
+    public static function warning(string $message, array $context = []): void
+    {
+        $details = !empty($context) ? ' ' . json_encode(self::redactSensitiveData($context), JSON_UNESCAPED_SLASHES) : '';
+        self::fileLog('WARNING', $message . $details);
+        self::structured('WARNING', $message, $context);
+    }
+
+    public static function info(string $message, array $context = []): void
+    {
+        $details = !empty($context) ? ' ' . json_encode(self::redactSensitiveData($context), JSON_UNESCAPED_SLASHES) : '';
+        self::fileLog('INFO', $message . $details);
+        self::structured('INFO', $message, $context);
+    }
+
+    public static function structured(
+        string $level,
+        string $message,
+        array $context = [],
+        ?string $errorCategory = null,
+        ?float $executionTimeMs = null
+    ): void {
+        $logDir = dirname(__DIR__, 2) . '/storage/logs';
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0755, true);
+        }
+        $logFile = $logDir . '/verityvote-json-' . date('Y-m-d') . '.log';
+
+        $entry = [
+            'timestamp' => date('c'),
+            'level' => strtoupper($level),
+            'correlation_id' => self::getCorrelationId(),
+            'route' => $_SERVER['REQUEST_URI'] ?? ($_SERVER['SCRIPT_NAME'] ?? 'CLI'),
+            'method' => $_SERVER['REQUEST_METHOD'] ?? 'CLI',
+            'client_ip' => self::getClientIp(),
+            'message' => $message,
+            'context' => self::redactSensitiveData($context)
+        ];
+
+        if ($errorCategory !== null) {
+            $entry['error_category'] = $errorCategory;
+        }
+
+        if ($executionTimeMs !== null) {
+            $entry['execution_time_ms'] = round($executionTimeMs, 2);
+        }
+
+        $jsonLine = json_encode($entry, JSON_UNESCAPED_SLASHES) . "\n";
+        @file_put_contents($logFile, $jsonLine, FILE_APPEND | LOCK_EX);
     }
 
     public static function fileLog(string $level, string $message): void

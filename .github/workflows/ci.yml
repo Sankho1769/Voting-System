@@ -55,7 +55,7 @@ jobs:
           # Ensure runner user and Apache permissions
           sudo chmod 755 /home/runner
           sudo chmod -R 755 /home/runner/work
-          mkdir -p storage/logs storage/backups storage/uploads
+          mkdir -p storage/logs storage/cache storage/backups storage/uploads
           sudo chmod -R 777 storage
 
           # Create directory link in Apache web root
@@ -81,7 +81,7 @@ jobs:
         run: |
           set -e
           cp config/config.example.php config/config.php
-          mkdir -p storage/logs
+          mkdir -p storage/logs storage/cache
 
       - name: Verify Apache + PHP HTTP Integration
         run: |

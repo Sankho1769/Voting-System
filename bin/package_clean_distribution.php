@@ -60,7 +60,17 @@ foreach ($iterator as $item) {
     }
 
     // Skip log files and cookie jars in storage
-    if (preg_match('#storage/logs/.+\.(log|txt)$#i', $relativePath)) {
+    if (preg_match('#storage/logs/.+\.(log|txt|json)$#i', $relativePath)) {
+        continue;
+    }
+
+    // Skip cached files in storage (preserve .gitkeep)
+    if (preg_match('#storage/cache/.+#i', $relativePath) && basename($relativePath) !== '.gitkeep') {
+        continue;
+    }
+
+    // Skip temporary override tokens
+    if (basename($relativePath) === '.test_database_override') {
         continue;
     }
 

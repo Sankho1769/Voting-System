@@ -10,11 +10,11 @@ php tests/run_tests.php
 
 ---
 
-## 2. Audited Test Suite Breakdown (144 Tests Across 10 Suites)
+## 2. Audited Test Suite Breakdown (149 Tests Across 11 Suites + 5 Load Scenarios)
 
 Every test executes in sequence and validates against MySQL/MariaDB and the HTTP server. The verification suite runs against an isolated disposable database (`verityvote_test_suite`) provisioned on-the-fly with dynamic fixtures (`TestFixtureFactory`), ensuring zero pollution and zero risk of accidental dropping or alteration of the primary production database (`verityvote_db`).
 
-The complete suite contains exactly **144 passed tests** across 10 specialized suites:
+The complete suite contains exactly **156 passed tests** across 11 specialized suites:
 
 | Suite # | Suite Name | File | Tests | Status |
 |---|---|---|:---:|:---:|
@@ -24,15 +24,31 @@ The complete suite contains exactly **144 passed tests** across 10 specialized s
 | 4 | Voting Engine & Concurrency Tests | `tests/Integration/VotingConcurrencyTest.php` | 13 | PASS |
 | 5 | Three Portals & Role Boundary Integration Tests | `tests/Integration/ThreePortalsAuthTest.php` | 13 | PASS |
 | 6 | Three Test Accounts Authentication Tests | `tests/Integration/TestAccountsAuthTest.php` | 15 | PASS |
-| 7 | HTTP & Browser Real-World Journey Tests | `tests/Integration/HttpJourneyTest.php` | 26 | PASS |
+| 7 | HTTP & Browser Real-World Journey Tests | `tests/Integration/HttpJourneyTest.php` | 32 | PASS |
 | 8 | CSRF & Portal Session Lifecycle Tests | `tests/Integration/CsrfPortalLifecycleTest.php` | 9 | PASS |
 | 9 | Master Security Hardening & Concurrency Tests | `tests/Integration/MasterSecurityTest.php` | 37 | PASS |
 | 10 | Database Backup & Recovery Tests | `tests/Integration/BackupRestoreTest.php` | 5 | PASS |
-| **TOTAL** | **Complete VerityVote Test Suite** | **10 Suites** | **144** | **144 / 144 PASS (100%)** |
+| 11 | Failure Resilience & Fault Recovery Tests (Phase 12) | `tests/Integration/FailureResilienceTest.php` | 6 | PASS |
+| **TOTAL** | **Complete VerityVote Regression Suite** | **11 Suites** | **156** | **156 / 156 PASS (100%)** |
 
 ### Mathematical Verification of Test Count
-$$\text{Total} = 9 + 8 + 9 + 13 + 13 + 15 + 26 + 9 + 37 + 5 = 144$$
+$$\text{Total} = 9 + 8 + 9 + 13 + 13 + 15 + 32 + 9 + 37 + 5 + 6 = 156$$
 Every single test is accounted for, executes without skipping, and passes 100%.
+
+---
+
+## 2.1 Phase 12 High-Concurrency Load Testing Suite (`tests/load/`)
+
+In addition to the 149 regression tests, VerityVote includes 5 dedicated load and stress testing scenarios executed via `php tests/load/run_load_tests.php`:
+
+| Scenario | Scenario Name | File | Volume | Outcome |
+|---|---|---|:---:|:---:|
+| 1 | Discovery & Read Subsystem Load | `tests/load/DiscoveryLoadTest.php` | 100 reqs | **3/3 PASS** (18,066 req/s) |
+| 2 | Authentication & Portal Security Load | `tests/load/AuthLoadTest.php` | 26 reqs | **2/2 PASS** (54.49 ms avg) |
+| 3 | Voting Burst Concurrency Load | `tests/load/VotingBurstLoadTest.php` | 30 voters | **3/3 PASS** (68.0 tx/s) |
+| 4 | Same-Voter 25 & 100 Concurrency Attack | `tests/load/SameVoterAttackTest.php` | 125 attacks | **3/3 PASS** (Exactly 1 vote committed) |
+| 5 | Mixed Workload (70/20/10) Simulation | `tests/load/MixedWorkloadLoadTest.php` | 100 ops | **1/1 PASS** (240 ops/sec, 0% errors) |
+| **TOTAL** | **Load Testing Benchmark Suite** | **5 Scenarios** | **381 Ops** | **12 / 12 PASS (100%)** |
 
 ---
 

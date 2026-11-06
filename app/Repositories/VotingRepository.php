@@ -50,9 +50,20 @@ class VotingRepository
      */
     public function recordBallot(int $electionId, int $candidateId, int $userId, string $hmacSecret): string
     {
+        // ARCHITECTURAL INVARIANT (Phase 12): Electoral decision gates and ballot writes
+        // MUST NEVER READ FROM CACHE. Authoritative ACID transactions are mandatory.
         $maxAttempts = 3;
 
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            // Idempotency check on retry: If a prior attempt committed before connection drop,
+            // return existing cryptographic receipt rather than throwing or failing.
+            if ($attempt > 1) {
+                $existing = $this->getParticipation($electionId, $userId);
+                if ($existing !== null && !empty($existing['confirmation_hash'])) {
+                    return $existing['confirmation_hash'];
+                }
+            }
+
             $this->db->beginTransaction();
 
             try {
@@ -173,7 +184,9 @@ class VotingRepository
                            || strpos($e->getMessage(), 'Lock wait timeout') !== false;
 
                 if ($isDeadlock && $attempt < $maxAttempts) {
-                    usleep(random_int(10000, 35000));
+                    // Exponential backoff with random jitter: (2^attempt * 10ms) + rand(5ms, 25ms)
+                    $backoffMicros = (int)(pow(2, $attempt) * 10000 + random_int(5000, 25000));
+                    usleep($backoffMicros);
                     continue;
                 }
 

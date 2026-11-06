@@ -15,13 +15,16 @@ class ElectionService
 {
     private ElectionRepository $electionRepo;
     private CandidateRepository $candidateRepo;
+    private CacheService $cacheService;
 
     public function __construct(
         ?ElectionRepository $electionRepo = null,
-        ?CandidateRepository $candidateRepo = null
+        ?CandidateRepository $candidateRepo = null,
+        ?CacheService $cacheService = null
     ) {
         $this->electionRepo = $electionRepo ?? new ElectionRepository();
         $this->candidateRepo = $candidateRepo ?? new CandidateRepository();
+        $this->cacheService = $cacheService ?? new CacheService();
     }
 
     public function createElection(array $data, int $userId): array
@@ -66,6 +69,9 @@ class ElectionService
             'opens_at' => $opensAt,
             'closes_at' => $closesAt
         ], $userId);
+
+        // Invalidate cached query listings post-transaction
+        $this->cacheService->invalidateElection($electionId);
 
         return ['success' => true, 'id' => $electionId];
     }
@@ -116,6 +122,9 @@ class ElectionService
             'title' => $title,
             'position' => $position
         ], $userId);
+
+        // Invalidate cached election detail and query listings post-update
+        $this->cacheService->invalidateElection($id);
 
         return ['success' => true];
     }
@@ -169,6 +178,9 @@ class ElectionService
             'old_state' => $currentState,
             'new_state' => $targetState
         ], $userId);
+
+        // Invalidate cached election state, results, and query listings post-transition
+        $this->cacheService->invalidateElection($id);
 
         return ['success' => true, 'new_status' => $targetState];
     }

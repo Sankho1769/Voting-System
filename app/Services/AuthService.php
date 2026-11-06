@@ -47,6 +47,8 @@ class AuthService
      */
     public function login(string $rawIdentifier, string $password, string $portal = 'default'): array
     {
+        // ARCHITECTURAL INVARIANT (Phase 12): Authentication state, password hashes, and user status
+        // MUST NEVER BE READ FROM CACHE. Authoritative database verification is strictly mandatory.
         $identifier = Sanitizer::cleanIdentifier($rawIdentifier);
         $ip = Logger::getClientIp();
 

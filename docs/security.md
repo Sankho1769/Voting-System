@@ -58,6 +58,22 @@ VerityVote enforces strict architectural boundaries across the three login porta
   - An administrator or election officer attempting to sign in through `/login/voter` is rejected: `"Access denied: Administrator accounts cannot sign in through the Voter portal."`
   - A student or staff member attempting to sign in through `/login/admin` is rejected: `"Access denied: Administrative credentials required."`
   - An account without a candidate role or linked candidate profile attempting `/login/candidate` is rejected: `"Access denied: No candidate profile found for this account."`
+
+### 2.9 Electoral Caching Boundary Invariant (Phase 12)
+Caching is strictly prohibited from touching authoritative electoral decision gates:
+- `Cache::guardElectoralSafety(string $key)` throws a runtime exception if any key contains `voter`, `eligibility`, `participation`, `ballot`, `password`, `auth_token`, `csrf`, or `vote_cast`.
+- `AuthService::login`, `EligibilityRepository::isEligible`, and `VotingRepository::recordBallot` execute direct, authoritative database operations.
+
+### 2.10 Concurrency, Deadlock & Replay Protection (Phase 12)
+- Strict global lock acquisition order: `elections (SHARE)` $\rightarrow$ `candidates (SHARE)` $\rightarrow$ `users (SHARE)` $\rightarrow$ `election_eligibility (UPDATE)` $\rightarrow$ `election_participation (INSERT)` $\rightarrow$ `votes (INSERT)`.
+- Bounded deadlock retries (up to 3 attempts) with jittered exponential backoff: $(2^{\text{attempt}} \times 10\text{ms}) + \text{rand}(5, 25\text{ms})$.
+- Idempotency verification prevents double-insertion during retries.
+- Verified against 25-burst and 100-burst simultaneous attacks from identical voters with zero duplicate ballots.
+
+### 2.11 Observability Log Redaction & Ballot Secrecy (Phase 12)
+- `Logger::redactSensitiveData` automatically scrubs passwords, tokens, session IDs, and candidate choices (`candidate_id`, `choice`).
+- A voter's candidate selection is never logged to disk or stored in correlation traces.
+- Participation tracking is physically decoupled from the anonymous `votes` table.
 - **Route-Level Defense in Depth**:
   - `RoleMiddleware(['admin', 'election_officer'])` intercepts `/admin/*` routes, immediately denying unauthorized users with `403 Forbidden`.
   - `CandidateMiddleware` protects `/candidate`, ensuring only approved candidates can view candidate dashboards.

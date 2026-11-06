@@ -17,6 +17,8 @@ class EligibilityRepository
 
     public function isEligible(int $electionId, int $userId): bool
     {
+        // ARCHITECTURAL INVARIANT (Phase 12): Authoritative electoral decision gate.
+        // MUST NEVER READ FROM CACHE. Direct database query is mandatory to ensure eligibility integrity.
         $val = $this->db->fetchValue(
             "SELECT id FROM election_eligibility WHERE election_id = ? AND user_id = ?",
             [$electionId, $userId],

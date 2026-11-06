@@ -4,6 +4,9 @@ Options -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Pass Authorization header to PHP environment
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
     # Optional Production HTTPS Redirection:
     # Uncomment the following two lines if enforcing HTTPS directly via Apache
     # RewriteCond %{HTTPS} off

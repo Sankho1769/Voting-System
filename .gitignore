@@ -4,12 +4,15 @@ config/config.php
 # Storage and uploads
 storage/logs/*
 !storage/logs/.gitkeep
+storage/cache/*
+!storage/cache/.gitkeep
 storage/uploads/*
 !storage/uploads/.gitkeep
 !storage/uploads/.htaccess
 !storage/uploads/candidates/
 !storage/uploads/candidates/.gitkeep
 !storage/uploads/candidates/.htaccess
+storage/.test_database_override
 
 # Environment and CLI runner helper
 powershell.exe

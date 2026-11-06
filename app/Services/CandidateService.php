@@ -14,15 +14,18 @@ class CandidateService
 {
     private CandidateRepository $candidateRepo;
     private ElectionRepository $electionRepo;
+    private CacheService $cacheService;
     private array $config;
 
     public function __construct(
         ?CandidateRepository $candidateRepo = null,
         ?ElectionRepository $electionRepo = null,
-        ?array $config = null
+        ?array $config = null,
+        ?CacheService $cacheService = null
     ) {
         $this->candidateRepo = $candidateRepo ?? new CandidateRepository();
         $this->electionRepo = $electionRepo ?? new ElectionRepository();
+        $this->cacheService = $cacheService ?? new CacheService();
 
         if ($config === null) {
             $configFile = dirname(__DIR__, 2) . '/config/config.php';
@@ -100,6 +103,8 @@ class CandidateService
             'approval_status' => $approvalStatus
         ], $userId);
 
+        $this->cacheService->invalidateCandidates($electionId);
+
         return ['success' => true, 'id' => $candidateId];
     }
 
@@ -147,6 +152,8 @@ class CandidateService
             'approval_status' => $approvalStatus
         ], $userId);
 
+        $this->cacheService->invalidateCandidates((int)$candidate['election_id']);
+
         return ['success' => true];
     }
 
@@ -171,6 +178,8 @@ class CandidateService
             'election_id' => $candidate['election_id'],
             'name' => $candidate['name']
         ], $userId);
+
+        $this->cacheService->invalidateCandidates((int)$candidate['election_id']);
 
         return ['success' => true];
     }

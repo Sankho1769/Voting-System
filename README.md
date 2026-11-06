@@ -83,9 +83,13 @@ Select `verityvote_db` to inspect tables, foreign keys, and indexes.
 
 ### 7. Run Automated Test Suite
 ```bash
+# Regression suite (156 passed tests across 11 suites)
 C:\xampp\php\php.exe tests/run_tests.php
+
+# High-concurrency load & stress benchmark suite (12 passed tests across 5 scenarios)
+C:\xampp\php\php.exe tests/load/run_load_tests.php
 ```
-*Expected: 144 Passed | 0 Failed | 0 Skipped (100% pass rate across 10 suites).*
+*Expected: 156 Passed | 0 Failed | 0 Skipped in regression suite; 12/12 Passed in load benchmark suite.*
 *(Runs against isolated disposable database `verityvote_test_suite` with dynamic test fixtures, keeping primary database untouched).*
 
 ---
@@ -123,6 +127,15 @@ C:\xampp\php\php.exe tests/run_tests.php
 
 ## Comprehensive Documentation
 Complete documentation is available in the [`docs/`](docs/) directory:
+- [Performance & Scalability Deep Dives](docs/interview/)
+  - [Performance Baseline & Empirical Profile](docs/interview/performance-baseline.md)
+  - [Database Optimization & Covering Indexes](docs/interview/database-optimization.md)
+  - [Advanced Caching Architecture & Electoral Boundaries](docs/interview/caching-architecture.md)
+  - [Concurrency, Locking & Transaction Engineering](docs/interview/concurrency-and-consistency.md)
+  - [Load Testing Methodology & Adversarial Attacks](docs/interview/benchmark-methodology.md)
+  - [Observability, Structured Logging & Prometheus Metrics](docs/interview/observability.md)
+  - [Failure Resilience & Fault Recovery Analysis](docs/interview/failure-analysis.md)
+  - [Institutional Scalability Roadmap (Stages 1–4)](docs/interview/scalability-roadmap.md)
 - [Production Deployment Guide](docs/production-deployment.md)
 - [Database Backup & Recovery Guide](docs/backup-and-recovery.md)
 - [Production Readiness Checklist](docs/production-checklist.md)

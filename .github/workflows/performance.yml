@@ -1,0 +1,105 @@
+name: VerityVote Performance & Load Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: 'Benchmark iterations'
+        required: false
+        default: '50'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  performance-benchmarks:
+    name: Institutional Performance & Concurrency Load Benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mariadb:
+        image: mariadb:10.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: verityvote_db
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: fpm, mysqli, curl, mbstring, fileinfo, pdo, pdo_mysql, openssl
+          ini-values: error_reporting=E_ALL, display_errors=On, date.timezone=Asia/Kolkata
+          coverage: none
+
+      - name: Install and configure Apache
+        run: |
+          set -e
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y apache2
+          sudo a2enmod proxy_fcgi setenvif rewrite headers
+          sudo a2enconf php8.2-fpm || true
+          sudo chmod 755 /home/runner
+          sudo chmod -R 755 /home/runner/work
+          mkdir -p storage/logs storage/cache storage/backups storage/uploads
+          sudo chmod -R 777 storage
+          sudo ln -s "$GITHUB_WORKSPACE" /var/www/html/Baymax_Voting_System
+          sudo cp config/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
+          sudo systemctl restart php8.2-fpm
+          sudo systemctl restart apache2
+
+      - name: Verify MariaDB connection & configure database permissions
+        run: |
+          set -e
+          mysqladmin ping -h 127.0.0.1 -u root --silent
+          mysql -h 127.0.0.1 -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+
+      - name: Initialize application configuration
+        run: |
+          set -e
+          cp config/config.example.php config/config.php
+          mkdir -p storage/logs storage/cache
+
+      - name: Run Schema and Migrations
+        run: |
+          set -e
+          mysql -h 127.0.0.1 -u root verityvote_db < database/schema.sql
+          php bin/migrate.php
+
+      - name: Verify Health Probes
+        run: |
+          set -e
+          curl -s http://localhost/Baymax_Voting_System/public/health/live | grep -q "alive"
+          curl -s http://localhost/Baymax_Voting_System/public/health/ready | grep -q "ready"
+          echo "Health probes verified operational."
+
+      - name: Run Performance Baseline Benchmark
+        run: |
+          set -e
+          php bin/benchmark_baseline.php
+
+      - name: Execute Phase 12 Load & Concurrency Suite
+        run: |
+          set -e
+          php tests/load/run_load_tests.php
+
+      - name: Publish Performance Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verityvote-performance-benchmarks
+          path: |
+            storage/logs/benchmark_baseline.json
+            storage/logs/load_benchmark_results.json
+          retention-days: 14

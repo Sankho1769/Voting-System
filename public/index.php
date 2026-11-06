@@ -60,6 +60,60 @@ $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 // ROUTING DEFINITIONS
 // =====================================================================
 
+// Health and Observability Telemetry Endpoints
+if ($path === '/health/live') {
+    require __DIR__ . '/health/live.php';
+    exit;
+}
+if ($path === '/health/ready') {
+    require __DIR__ . '/health/ready.php';
+    exit;
+}
+if ($path === '/metrics') {
+    $configFile = dirname(__DIR__) . '/config/config.php';
+    if (!file_exists($configFile)) {
+        $configFile = dirname(__DIR__) . '/config/config.example.php';
+    }
+    $cfg = require $configFile;
+    $metricsEnabled = $cfg['monitoring']['metrics_enabled'] ?? true;
+
+    if (!$metricsEnabled) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "404 Not Found\n";
+        exit;
+    }
+
+    $configuredToken = $cfg['monitoring']['metrics_token'] ?? null;
+    $requestHeaders = function_exists('getallheaders') ? (getallheaders() ?: []) : [];
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION']
+        ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+        ?? $requestHeaders['Authorization']
+        ?? $requestHeaders['authorization']
+        ?? '';
+    $bearerToken = null;
+    if (preg_match('/Bearer\s+(.+)$/i', $authHeader, $matches)) {
+        $bearerToken = trim($matches[1]);
+    }
+    $queryToken = $_GET['token'] ?? null;
+    $providedToken = $bearerToken ?? $queryToken;
+
+    $isAdmin = Auth::isLoggedIn() && Auth::isAdmin();
+    $isTokenValid = !empty($configuredToken) && !empty($providedToken) && hash_equals($configuredToken, $providedToken);
+
+    if (!$isAdmin && !$isTokenValid) {
+        http_response_code(401);
+        header('WWW-Authenticate: Bearer realm="VerityVote Metrics"');
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "401 Unauthorized: Valid monitoring token or administrator authorization required.\n";
+        exit;
+    }
+
+    header('Content-Type: text/plain; version=0.0.4; charset=utf-8');
+    echo \App\Core\Metrics::getInstance()->exportPrometheusFormat();
+    exit;
+}
+
 switch ($path) {
     // -----------------------------------------------------------------
     // Home Dispatcher

@@ -28,11 +28,11 @@ VerityVote implements a role-partitioned front controller architecture:
 ```
 Voting-System/
 ├── app/                  # Private application core (Never directly web-accessible)
-│   ├── Core/             # Database, Session, Auth, CSRF, View, Logger
+│   ├── Core/             # Database, Session, Auth, CSRF, View, Logger, Cache, Metrics
 │   ├── Helpers/          # Sanitizer, Validator, CSVExporter, TimeHelper
 │   ├── Middleware/       # AuthMiddleware, RoleMiddleware, CandidateMiddleware, VoterMiddleware, CsrfMiddleware
 │   ├── Repositories/     # UserRepository, ElectionRepository, CandidateRepository, VotingRepository, etc.
-│   ├── Services/         # AuthService, ElectionService, CandidateService, VotingService, etc.
+│   ├── Services/         # AuthService, ElectionService, CandidateService, VotingService, CacheService, etc.
 │   ├── Views/            # Layouts, Member, Candidate, Admin, Error templates
 │   └── bootstrap.php     # Autoloader & environment initializers
 ├── bin/                  # CLI-only administrative and diagnostic utilities
@@ -40,26 +40,33 @@ Voting-System/
 │   ├── check_db.php      # Database connectivity & schema verifier
 │   ├── create_admin.php  # Protected initial administrator setup
 │   ├── migrate.php       # Schema migration runner
+│   ├── benchmark_baseline.php # Performance baseline profiling
 │   └── lint_all.php      # Syntax validation tool
 ├── config/               # Configuration templates (protected by .htaccess)
 │   ├── config.example.php
 │   └── config.php        # Environment configuration
 ├── database/             # Schema definitions and migrations
 │   ├── schema.sql
-│   └── migrations/       # Incremental SQL migration scripts
+│   └── migrations/       # 001 through 006 (006: Composite Performance Indexes)
 ├── public/               # Web Document Root
 │   ├── index.php         # Front controller gateway (3 portals + dashboards)
 │   ├── api/              # Live polling JSON endpoints
+│   ├── health/           # Kubernetes / container liveness and readiness probes
+│   │   ├── live.php      # Liveness probe (HTTP 200)
+│   │   └── ready.php     # Readiness probe (DB, tables, storage, memory)
 │   ├── assets/           # CSS, JS, and UI images
 │   └── .htaccess         # URL rewriting & security headers
 ├── storage/              # Private application storage (protected by .htaccess)
-│   ├── logs/             # Daily audited security logs
+│   ├── cache/            # Partitioned file-cache directory
+│   ├── logs/             # Daily audited security logs & structured JSON traces
 │   └── uploads/          # Candidate photos (no script execution)
-├── tests/                # Automated unit and integration test suite
+├── tests/                # Automated unit, integration, and load test suites
 │   ├── Unit/
-│   ├── Integration/      # Concurrency, ThreePortalsAuthTest, HttpJourneyTest, CsrfPortalLifecycleTest, MasterSecurityTest
+│   ├── Integration/      # Concurrency, MasterSecurityTest, FailureResilienceTest
+│   ├── load/             # Phase 12 High-concurrency load testing suite (5 scenarios)
 │   └── run_tests.php
 └── docs/                 # Complete system documentation folder
+    └── interview/        # Phase 12 Engineering Deep Dives (8 technical references)
 ```
 
 ---

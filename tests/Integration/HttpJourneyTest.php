@@ -36,7 +36,7 @@ class HttpJourneyTest
         }
     }
 
-    private function request(string $path, string $method = 'GET', array $postData = [], ?string $customCookie = null): array
+    private function request(string $path, string $method = 'GET', array $postData = [], ?string $customCookie = null, array $headers = []): array
     {
         $url = strpos($path, 'http') === 0 ? $path : $this->baseUrl . $path;
         $ch = curl_init();
@@ -48,6 +48,10 @@ class HttpJourneyTest
         curl_setopt($ch, CURLOPT_COOKIEJAR, $customCookie ?? $this->cookieFile);
         curl_setopt($ch, CURLOPT_COOKIEFILE, $customCookie ?? $this->cookieFile);
         curl_setopt($ch, CURLOPT_USERAGENT, 'VerityVote-IntegrationTest-Runner/1.0');
+
+        if (!empty($headers)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        }
 
         if ($method === 'POST') {
             curl_setopt($ch, CURLOPT_POST, true);
@@ -389,6 +393,62 @@ class HttpJourneyTest
         $results[] = [
             'name' => 'HTTP Live Results API: /public/api/live_results.php returns valid JSON payload with status and candidate data',
             'pass' => ($apiResp['code'] === 200 && ($apiData['success'] ?? false) === true && isset($apiData['results']['candidates']))
+        ];
+
+        // -------------------------------------------------------------
+        // 7. Health & Monitoring Observability Endpoints (Phase 12)
+        // -------------------------------------------------------------
+        // 7.1 Liveness Probe
+        $liveResp = $this->request('/public/health/live.php');
+        $liveData = json_decode($liveResp['body'], true);
+        $results[] = [
+            'name' => 'HTTP Health: /public/health/live.php returns HTTP 200 with alive status and memory info',
+            'pass' => ($liveResp['code'] === 200 && ($liveData['status'] ?? '') === 'alive' && isset($liveData['php_version']))
+        ];
+
+        // 7.2 Readiness Probe
+        $readyResp = $this->request('/public/health/ready.php');
+        $readyData = json_decode($readyResp['body'], true);
+        $results[] = [
+            'name' => 'HTTP Health: /public/health/ready.php validates database, critical tables, and storage (HTTP 200 ready)',
+            'pass' => ($readyResp['code'] === 200 && ($readyData['status'] ?? '') === 'ready' && ($readyData['checks']['database'] ?? '') === 'ok')
+        ];
+
+        // 7.3 Metrics Endpoint: Unauthorized Request (No token and anonymous session)
+        $anonCookie = tempnam(sys_get_temp_dir(), 'vv_anon_');
+        $unauthMetrics = $this->request('/public/metrics', 'GET', [], $anonCookie);
+        @unlink($anonCookie);
+        $results[] = [
+            'name' => 'HTTP Metrics Security: Accessing /public/metrics without authorization token returns HTTP 401 Unauthorized',
+            'pass' => ($unauthMetrics['code'] === 401 && strpos($unauthMetrics['headers'], 'WWW-Authenticate: Bearer') !== false)
+        ];
+
+        // 7.4 Metrics Endpoint: Authorized Request with Bearer Token
+        $configFile = dirname(__DIR__, 2) . '/config/config.php';
+        $cfg = file_exists($configFile) ? require $configFile : [];
+        $metricsToken = $cfg['monitoring']['metrics_token'] ?? 'vv_metrics_secret_token_change_in_production';
+
+        $authMetrics = $this->request('/public/metrics', 'GET', [], null, [
+            "Authorization: Bearer {$metricsToken}"
+        ]);
+        $hasPrometheusHeader = strpos($authMetrics['body'], 'verityvote_votes_submitted_total') !== false;
+        $results[] = [
+            'name' => 'HTTP Metrics Security: Accessing /public/metrics with valid Bearer token returns HTTP 200 and Prometheus telemetry',
+            'pass' => ($authMetrics['code'] === 200 && $hasPrometheusHeader)
+        ];
+
+        // 7.5 Metrics Endpoint: Authorized Request with Query Parameter Token
+        $queryMetrics = $this->request("/public/metrics?token={$metricsToken}");
+        $results[] = [
+            'name' => 'HTTP Metrics Security: Accessing /public/metrics with query token returns HTTP 200 and telemetry',
+            'pass' => ($queryMetrics['code'] === 200 && strpos($queryMetrics['body'], 'verityvote_') !== false)
+        ];
+
+        // 7.6 Metrics Endpoint: Logged-in Administrator Access via Session
+        $adminMetrics = $this->request('/public/metrics');
+        $results[] = [
+            'name' => 'HTTP Metrics Security: Authenticated administrator can access /public/metrics via session',
+            'pass' => ($adminMetrics['code'] === 200 && strpos($adminMetrics['body'], 'verityvote_') !== false)
         ];
 
         return $results;

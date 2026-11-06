@@ -64,7 +64,13 @@ return [
 
     'storage' => [
         'logs_path' => dirname(__DIR__) . '/storage/logs',
+        'cache_path' => dirname(__DIR__) . '/storage/cache',
         'uploads_path' => dirname(__DIR__) . '/storage/uploads',
         'candidates_dir' => dirname(__DIR__) . '/storage/uploads/candidates',
+    ],
+
+    'monitoring' => [
+        'metrics_enabled' => true,
+        'metrics_token' => 'vv_metrics_secret_token_change_in_production',
     ]
 ];
