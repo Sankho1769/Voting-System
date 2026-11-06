@@ -38,7 +38,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mysqli, curl, mbstring, fileinfo, pdo, pdo_mysql, openssl
+          extensions: fpm, mysqli, curl, mbstring, fileinfo, pdo, pdo_mysql, openssl
           ini-values: error_reporting=E_ALL, display_errors=On, date.timezone=Asia/Kolkata
           coverage: none
 
@@ -46,12 +46,11 @@ jobs:
         run: |
           set -e
           sudo DEBIAN_FRONTEND=noninteractive apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y apache2 libapache2-mod-php8.2
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y apache2
 
-          # Ensure mpm_prefork is active for mod_php and enable required modules
-          sudo a2dismod mpm_event || true
-          sudo a2enmod mpm_prefork || true
-          sudo a2enmod php8.2 rewrite headers
+          # Enable required Apache modules and FPM configuration
+          sudo a2enmod proxy_fcgi setenvif rewrite headers
+          sudo a2enconf php8.2-fpm || true
 
           # Ensure runner user and Apache permissions
           sudo chmod 755 /home/runner
@@ -65,8 +64,9 @@ jobs:
           # Configure VirtualHost with AllowOverride All
           sudo cp config/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
 
-          # Verify configuration and start Apache
+          # Verify configuration and start services
           sudo apache2ctl configtest
+          sudo systemctl restart php8.2-fpm
           sudo systemctl restart apache2
           sudo systemctl status apache2 --no-pager
 
