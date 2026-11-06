@@ -1,11 +1,11 @@
 # VerityVote — Build Status & Verification Evidence
 
 **Date:** November 2026  
-**Build Status:** **100% COMPLETE, VERIFIED & PRODUCTION-READY**  
-**Test Suite:** **144 / 144 PASSING (100% Pass Rate across 10 Suites)**  
-**PHP Lint:** **91 / 91 Files Syntax Checked (0 Errors)**  
-**Environment:** Apache 2.4 / PHP 8.2.12 / MariaDB 10.4.32 / XAMPP on Windows  
-**Database:** `verityvote_db` (10 Core Tables, 5 Versioned Migrations Applied, All InnoDB; Protected from Test Pollution via Isolated Disposable DB `verityvote_test_suite`)  
+**Build Status:** **100% COMPLETE, VERIFIED & PRODUCTION-READY**
+**Test Suite:** **144 / 144 PASSING (100% Pass Rate across 10 Suites)**
+**PHP Lint:** **92 / 92 Files Syntax Checked (0 Errors)**
+**Environment:** Apache 2.4 / PHP 8.2.12 / MariaDB 10.4.32 / XAMPP on Windows & Ubuntu Linux CI
+**Database:** `verityvote_db` (10 Core Tables, 5 Versioned Migrations Applied, All InnoDB; Protected from Test Pollution via Isolated Disposable DB `verityvote_test_suite`)
 
 ---
 
@@ -311,7 +311,27 @@ C:\xampp\php\php.exe bin/lint_all.php
 ```
 Linting all PHP files in repository...
 --------------------------------------------------------
-Lint Complete: 91 files checked. Syntax errors: 0
+Lint Complete: 92 files checked. Syntax errors: 0
 --------------------------------------------------------
 ```
-All 91 PHP files in the codebase pass syntax linting with 0 errors.
+All 92 PHP files in the codebase pass syntax linting with 0 errors.
+
+---
+
+## 7. Automated CI/CD with GitHub Actions (Phase 11)
+
+VerityVote includes an automated continuous integration pipeline defined in `.github/workflows/ci.yml`.
+
+### 7.1 Pipeline Architecture
+- **Triggers**: Executed automatically on every push to `main`, every pull request targeting `main`, or on-demand via `workflow_dispatch`.
+- **Concurrency & Resource Management**: `concurrency.group = ci-${{ github.ref }}` with `cancel-in-progress: true` automatically cancels obsolete queued runs.
+- **Least-Privilege Security**: Configured with `permissions: contents: read`. Zero repository write permissions or secret leakage vectors.
+- **Runner**: Clean `ubuntu-latest` runner executing PHP 8.2 and MariaDB 10.4 service container.
+- **Database Baseline**: Uses `mariadb:10.4` container with health checks (`mysqladmin ping -h 127.0.0.1`), matching the local XAMPP baseline without silently upgrading database compatibility requirements.
+- **Apache Web Server Integration**: Installs Apache2 with `libapache2-mod-php8.2`, `mod_rewrite`, and `mod_headers`, reproducing local XAMPP routing and `.htaccess` security defenses (such as blocking internal `/app/`, `/config/`, and `/storage/` directories).
+- **Execution Pipeline**:
+  1. `php bin/lint_all.php`: Syntax checks all 92 PHP files across codebase.
+  2. `php bin/check_db.php`: Verifies database connectivity, applies `database/schema.sql`, and applies migrations 002–005.
+  3. `php tests/run_tests.php`: Executes complete verification suite (144 tests across 10 suites) using disposable test database `verityvote_test_suite`.
+  4. `php bin/generate_ci_summary.php`: Dynamically parses test logs and publishes rich step summary table to `GITHUB_STEP_SUMMARY`.
+- **Safe Teardown**: Guarantees test database teardown and removes temporary test overrides in `finally` blocks regardless of test outcome.

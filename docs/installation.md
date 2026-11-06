@@ -123,3 +123,16 @@ If you wish to run VerityVote as a dedicated local domain (e.g. `http://verityvo
    127.0.0.1 verityvote.local
    ```
 3. Restart Apache. Navigate to `http://verityvote.local`.
+
+---
+
+## 4. Continuous Integration Pipeline (GitHub Actions)
+
+When contributing code via Git, VerityVote automatically runs the exact installation and verification steps in GitHub Actions on every push and pull request to `main`:
+1. Sets up Ubuntu runner with **PHP 8.2** and **MariaDB 10.4**.
+2. Configures **Apache 2.4** with `libapache2-mod-php8.2`, `mod_rewrite`, and `mod_headers`.
+3. Validates PHP syntax across all 92 codebase files (`bin/lint_all.php`).
+4. Creates database, validates schema, and applies migrations (`bin/check_db.php`).
+5. Executes the full 144-test verification suite using the disposable test database (`tests/run_tests.php`).
+6. Verifies concurrency invariants (including 100 simultaneous submissions yielding exactly 1 accepted ballot).
+7. Generates dynamic execution metrics in `GITHUB_STEP_SUMMARY`.

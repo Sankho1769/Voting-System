@@ -160,3 +160,69 @@ Output:
 Test Execution Summary: 144 Passed | 0 Failed | 0 Skipped
 ========================================================
 ```
+
+---
+
+## 5. Automated Continuous Integration (GitHub Actions)
+
+VerityVote includes a production-grade CI pipeline configured in `.github/workflows/ci.yml`.
+
+### 5.1 Pipeline Triggers & Concurrency
+- **Triggers**:
+  - `push` to branch `main`.
+  - `pull_request` targeting `main`.
+  - `workflow_dispatch` for manual on-demand execution.
+- **Concurrency Control**: Automatically cancels stale in-flight builds using `concurrency: group: ci-${{ github.ref }}, cancel-in-progress: true`.
+- **Security Context**: Strictly follows least-privilege principles (`permissions: contents: read`). No deployment or write credentials are required or exposed.
+
+### 5.2 CI Environment & Infrastructure
+- **Operating System**: Ubuntu Latest runner (`ubuntu-latest`).
+- **PHP Version**: PHP 8.2 with `mysqli`, `curl`, `mbstring`, `fileinfo`, `pdo`, `pdo_mysql`, and `openssl` extensions.
+- **Web Server**: Apache 2.4 with `libapache2-mod-php8.2`, `mod_rewrite`, and `mod_headers`, ensuring identical directory security (`RewriteRule ^(app|bin|config|database|docs|storage|tests)/ - [F,L]`) and URL routing (`index.php`) as in production.
+- **Database Service Container**:
+  - Image: `mariadb:10.4` (guaranteeing compatibility with the supported deployment baseline of MariaDB 10.4+ / MySQL 8.0+ without silent requirement inflation).
+  - Health checks: `--health-cmd="mysqladmin ping -h 127.0.0.1"`.
+  - Initialized with disposable credentials (`root` without password on loopback).
+
+### 5.3 Test Execution Stages
+1. **PHP Syntax Validation (Lint)**:
+   ```bash
+   php bin/lint_all.php
+   ```
+   Scans all 92 PHP files across the repository to verify 0 syntax errors.
+2. **Database Schema & Migration Validation**:
+   ```bash
+   php bin/check_db.php
+   ```
+   Connects to MariaDB, creates `verityvote_db`, applies `database/schema.sql`, and applies migrations 002 through 005.
+3. **Automated Verification Suite Execution**:
+   ```bash
+   php tests/run_tests.php
+   ```
+   Spins up disposable database `verityvote_test_suite`, provisions dynamic fixtures via `TestFixtureFactory`, runs all 144 tests across 10 suites, drops `verityvote_test_suite` in `finally`, and verifies primary database integrity.
+4. **Step Summary Generation**:
+   ```bash
+   php bin/generate_ci_summary.php storage/logs/ci_lint.log storage/logs/ci_db.log storage/logs/ci_tests.log
+   ```
+   Parses raw test logs and outputs a rich Markdown table into `GITHUB_STEP_SUMMARY`.
+
+### 5.4 Database Isolation & Concurrency Verification
+- **Safety Barrier**: `TestDatabaseManager::assertIsDisposable()` strictly enforces that the test runner operates exclusively on databases named with `test` or `disposable`. The runner will throw a fatal `RuntimeException` if any attempt is made to drop or alter `verityvote_db`.
+- **High Concurrency Invariants**:
+  - **25 Same-Voter Connections**: Exactly 1 accepted, 24 rejected.
+  - **100 Same-Voter Connections**: Exactly 1 accepted, 99 rejected.
+  - **10 Distinct Voters Simultaneously**: Exactly 10 accepted with zero data loss.
+
+### 5.5 Interpreting GitHub Actions Failures
+- **Lint Step Failure**: A PHP file has a syntax error. Look at the specific filename and line number reported in the `Validate PHP syntax` step log.
+- **Database Migration Step Failure**: Schema definition or SQL migration failed to apply. Check for missing columns, foreign key conflicts, or syntax incompatibility in `database/migrations/`.
+- **Verification Suite Step Failure**: One or more unit/integration tests failed. Inspect the `Individual Test Suite Breakdown` table in the workflow summary to identify the exact failing test.
+- **Apache Probing Failure**: Apache failed to serve `/public/login` (status != 200). Check `/var/log/apache2/error.log` dumped in the workflow step.
+
+### 5.6 Running Equivalent Checks Locally
+```bash
+# Windows XAMPP PowerShell / Command Prompt:
+C:\xampp\php\php.exe bin/lint_all.php
+C:\xampp\php\php.exe bin/check_db.php
+C:\xampp\php\php.exe tests/run_tests.php
+```

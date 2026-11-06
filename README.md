@@ -1,6 +1,8 @@
 # VerityVote — Institutional College Voting System
 > A closed, invitation-free electronic voting system for colleges and universities built with **PHP 8.2+ and MySQLi** for local execution on Windows with XAMPP and phpMyAdmin.
 
+[![VerityVote CI](https://github.com/Sankho1769/Voting-System/actions/workflows/ci.yml/badge.svg)](https://github.com/Sankho1769/Voting-System/actions/workflows/ci.yml)
+
 ---
 
 ## Key Highlights
@@ -85,6 +87,37 @@ C:\xampp\php\php.exe tests/run_tests.php
 ```
 *Expected: 144 Passed | 0 Failed | 0 Skipped (100% pass rate across 10 suites).*
 *(Runs against isolated disposable database `verityvote_test_suite` with dynamic test fixtures, keeping primary database untouched).*
+
+---
+
+## Automated CI/CD (GitHub Actions)
+
+VerityVote includes a continuous integration workflow defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+### Workflow Overview
+On every push or pull request to `main` (and on manual trigger):
+1. **Runner Environment**: Ubuntu latest with **PHP 8.2** and **Apache 2.4** (`libapache2-mod-php8.2`, `mod_rewrite`, `mod_headers`).
+2. **Database Service**: Isolated **MariaDB 10.4** container service with automated health check ping.
+3. **Required PHP Extensions**: `mysqli`, `curl`, `mbstring`, `fileinfo`, `pdo`, `pdo_mysql`, `openssl`.
+4. **Least-Privilege Security**: `permissions: contents: read` with zero secret exposure.
+5. **Stages Executed**:
+   - `php bin/lint_all.php`: Validates syntax of all 92 PHP files (0 errors required).
+   - `php bin/check_db.php`: Creates database, validates 10 core tables, and applies migrations 002–005.
+   - `php tests/run_tests.php`: Executes the full 144-test verification suite across all 10 suites against disposable test database `verityvote_test_suite`.
+   - `php bin/generate_ci_summary.php`: Posts dynamic test summary and concurrency verification table to `GITHUB_STEP_SUMMARY`.
+
+### Running Equivalent Checks Locally
+To reproduce the exact CI pipeline on your local Windows XAMPP machine:
+```bash
+# 1. Syntax check all 92 files
+C:\xampp\php\php.exe bin/lint_all.php
+
+# 2. Database schema & migration health
+C:\xampp\php\php.exe bin/check_db.php
+
+# 3. Complete automated verification suite
+C:\xampp\php\php.exe tests/run_tests.php
+```
 
 ---
 
