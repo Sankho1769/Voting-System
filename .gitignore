@@ -3,9 +3,13 @@ config/config.php
 
 # Storage and uploads
 storage/logs/*
+!storage/logs/.gitkeep
 storage/uploads/*
 !storage/uploads/.gitkeep
-!storage/logs/.gitkeep
+!storage/uploads/.htaccess
+!storage/uploads/candidates/
+!storage/uploads/candidates/.gitkeep
+!storage/uploads/candidates/.htaccess
 
 # Environment and CLI runner helper
 powershell.exe

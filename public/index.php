@@ -186,6 +186,43 @@ switch ($path) {
         exit;
 
     // -----------------------------------------------------------------
+    // Media Gateway - Safe Photo Streaming (ASVS V12)
+    // -----------------------------------------------------------------
+    case '/media/candidate-photo':
+    case '/uploads/candidates':
+        $file = basename($_GET['file'] ?? '');
+        if (empty($file) || !preg_match('/^cand_[a-f0-9]{24}\.(jpg|jpeg|png|webp)$/i', $file)) {
+            http_response_code(404);
+            View::render('errors/404');
+            exit;
+        }
+
+        $baseCandidateDir = realpath(dirname(__DIR__) . '/storage/uploads/candidates');
+        $filePath = realpath(dirname(__DIR__) . '/storage/uploads/candidates/' . $file);
+
+        if (!$filePath || !$baseCandidateDir || strpos($filePath, $baseCandidateDir) !== 0 || !file_exists($filePath)) {
+            http_response_code(404);
+            View::render('errors/404');
+            exit;
+        }
+
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $contentTypes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp'
+        ];
+        $contentType = $contentTypes[$ext] ?? 'application/octet-stream';
+
+        header('Content-Type: ' . $contentType);
+        header('Content-Length: ' . (string)filesize($filePath));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: public, max-age=86400');
+        readfile($filePath);
+        exit;
+
+    // -----------------------------------------------------------------
     // Three Distinct Login Portals & Selection Gateway
     // -----------------------------------------------------------------
     case '/login':

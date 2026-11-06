@@ -79,6 +79,12 @@ class Logger
         ));
     }
 
+    public static function error(string $message, array $context = []): void
+    {
+        $details = !empty($context) ? ' ' . json_encode(self::redactSensitiveData($context), JSON_UNESCAPED_SLASHES) : '';
+        self::fileLog('ERROR', $message . $details);
+    }
+
     public static function fileLog(string $level, string $message): void
     {
         $logDir = dirname(__DIR__, 2) . '/storage/logs';

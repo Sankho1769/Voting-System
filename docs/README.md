@@ -15,10 +15,15 @@ Welcome to the comprehensive documentation directory for the **VerityVote** Inst
 
 ## Operational & User Manuals
 - [installation.md](installation.md) — Step-by-step setup guide for another student on Windows XAMPP.
+- [production-deployment.md](production-deployment.md) — Production Linux/hosting deployment, web server configuration (Apache/Nginx), and security.
+- [backup-and-recovery.md](backup-and-recovery.md) — Automated database backup, streaming restore, and disaster recovery procedures.
+- [production-checklist.md](production-checklist.md) — Production readiness sign-off checklist.
+- [operations-runbook.md](operations-runbook.md) — Day-to-day operations, log inspection, brute-force monitoring, and incident response.
 - [user-manual.md](user-manual.md) — Student and staff voter instructions.
 - [candidate-manual.md](candidate-manual.md) — Candidate control center and contender campaign guide.
 - [admin-manual.md](admin-manual.md) — Election officer and system administrator handbook.
 - [testing.md](testing.md) — Test suite documentation and automated test verification guide.
+- [PHASE_10_FINAL_REPORT.md](PHASE_10_FINAL_REPORT.md) — Production deployment readiness audit & final release report.
 
 ## Diagrams & Visual Models
 - [diagrams/erd.md](diagrams/erd.md) — Entity-Relationship Diagram (ERD).

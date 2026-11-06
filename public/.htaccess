@@ -1,14 +1,24 @@
+# Disable directory browsing
+Options -Indexes
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Optional Production HTTPS Redirection:
+    # Uncomment the following two lines if enforcing HTTPS directly via Apache
+    # RewriteCond %{HTTPS} off
+    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [QSA,L]
 </IfModule>
 
-# Security Headers
+# Security Headers (OWASP Recommended)
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "DENY"
     Header set X-XSS-Protection "1; mode=block"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 </IfModule>

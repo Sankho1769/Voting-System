@@ -83,12 +83,16 @@ Select `verityvote_db` to inspect tables, foreign keys, and indexes.
 ```bash
 C:\xampp\php\php.exe tests/run_tests.php
 ```
-*Expected: 139 Passed | 0 Failed (100% pass rate across 9 suites).*
+*Expected: 144 Passed | 0 Failed (100% pass rate across 10 suites).*
 
 ---
 
 ## Comprehensive Documentation
-Complete academic documentation is available in the [`docs/`](docs/) directory:
+Complete documentation is available in the [`docs/`](docs/) directory:
+- [Production Deployment Guide](docs/production-deployment.md)
+- [Database Backup & Recovery Guide](docs/backup-and-recovery.md)
+- [Production Readiness Checklist](docs/production-checklist.md)
+- [Operations & Maintenance Runbook](docs/operations-runbook.md)
 - [Software Requirements Specification (SRS)](docs/SRS.md)
 - [Product Requirements Document (PRD)](docs/PRD.md)
 - [System Architecture](docs/architecture.md)

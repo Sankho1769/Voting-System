@@ -118,5 +118,15 @@ if ($verifyZip->open($zipFile) === true) {
     echo "  - Contains database/schema.sql: " . ($hasSchema ? "[OK]" : "[MISSING]") . "\n";
     echo "  - Contains public/index.php: " . ($hasPublicIndex ? "[OK]" : "[MISSING]") . "\n";
     echo "  - Contains full test suite: " . ($hasTests ? "[OK]" : "[MISSING]") . "\n";
+    
+    $hasBackup = ($verifyZip->locateName('bin/backup_db.php') !== false);
+    $hasRestore = ($verifyZip->locateName('bin/restore_db.php') !== false);
+    $hasProdDoc = ($verifyZip->locateName('docs/production-deployment.md') !== false);
+    $hasRootHtaccess = ($verifyZip->locateName('.htaccess') !== false);
+
+    echo "  - Contains bin/backup_db.php: " . ($hasBackup ? "[OK]" : "[MISSING]") . "\n";
+    echo "  - Contains bin/restore_db.php: " . ($hasRestore ? "[OK]" : "[MISSING]") . "\n";
+    echo "  - Contains docs/production-deployment.md: " . ($hasProdDoc ? "[OK]" : "[MISSING]") . "\n";
+    echo "  - Contains root .htaccess: " . ($hasRootHtaccess ? "[OK]" : "[MISSING]") . "\n";
     $verifyZip->close();
 }

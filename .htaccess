@@ -1,0 +1,17 @@
+# =====================================================================
+# VerityVote - Root Apache Web Server Configuration
+# =====================================================================
+
+# 1. Disable Directory Indexing / Directory Browsing
+Options -Indexes
+
+# 2. Block direct HTTP access to internal application directories & files
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block access to hidden files and dotfiles (e.g. .git, .env, .gitignore)
+    RewriteRule (^|/)\.(?!well-known) - [F]
+
+    # Deny direct browser access to sensitive source and data directories
+    RewriteRule ^(app|bin|config|database|docs|storage|tests)/ - [F,L]
+</IfModule>

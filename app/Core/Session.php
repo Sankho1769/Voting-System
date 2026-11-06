@@ -36,7 +36,13 @@ class Session
         $lifetime = $config['cookie_lifetime'] ?? 0;
         $path = $config['cookie_path'] ?? '/';
         $domain = $config['cookie_domain'] ?? '';
-        $secure = (bool)($config['cookie_secure'] ?? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on'));
+        $isHttps = (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+            (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443) ||
+            (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ||
+            (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on')
+        );
+        $secure = isset($config['cookie_secure']) ? (bool)$config['cookie_secure'] : $isHttps;
         $httponly = (bool)($config['cookie_httponly'] ?? true);
         $samesite = $config['cookie_samesite'] ?? 'Lax';
         $idleTimeout = (int)($config['idle_timeout'] ?? 1800);

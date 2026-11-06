@@ -18,6 +18,7 @@ require_once __DIR__ . '/Integration/TestAccountsAuthTest.php';
 require_once __DIR__ . '/Integration/HttpJourneyTest.php';
 require_once __DIR__ . '/Integration/CsrfPortalLifecycleTest.php';
 require_once __DIR__ . '/Integration/MasterSecurityTest.php';
+require_once __DIR__ . '/Integration/BackupRestoreTest.php';
 
 use Tests\Unit\HelperTest;
 use Tests\Integration\AuthIntegrationTest;
@@ -28,6 +29,7 @@ use Tests\Integration\TestAccountsAuthTest;
 use Tests\Integration\HttpJourneyTest;
 use Tests\Integration\CsrfPortalLifecycleTest;
 use Tests\Integration\MasterSecurityTest;
+use Tests\Integration\BackupRestoreTest;
 
 echo "========================================================\n";
 echo " VerityVote - Complete Automated Test Suite\n";
@@ -43,6 +45,7 @@ $suites = [
     'HTTP & Browser Real-World Journey Tests' => HttpJourneyTest::class,
     'CSRF & Portal Session Lifecycle Tests' => CsrfPortalLifecycleTest::class,
     'Master Security Hardening & Concurrency Tests (Phase 9)' => MasterSecurityTest::class,
+    'Database Backup & Recovery Tests (Phase 10)' => BackupRestoreTest::class,
 ];
 
 $totalPassed = 0;
