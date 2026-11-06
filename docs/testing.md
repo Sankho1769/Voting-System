@@ -10,11 +10,11 @@ php tests/run_tests.php
 
 ---
 
-## 2. Audited Test Suite Breakdown (149 Tests Across 11 Suites + 5 Load Scenarios)
+## 2. Audited Test Suite Breakdown (158 Tests Across 11 Suites + 5 Load Scenarios)
 
 Every test executes in sequence and validates against MySQL/MariaDB and the HTTP server. The verification suite runs against an isolated disposable database (`verityvote_test_suite`) provisioned on-the-fly with dynamic fixtures (`TestFixtureFactory`), ensuring zero pollution and zero risk of accidental dropping or alteration of the primary production database (`verityvote_db`).
 
-The complete suite contains exactly **156 passed tests** across 11 specialized suites:
+The complete suite contains exactly **158 passed tests** across 11 specialized suites:
 
 | Suite # | Suite Name | File | Tests | Status |
 |---|---|---|:---:|:---:|
@@ -24,15 +24,15 @@ The complete suite contains exactly **156 passed tests** across 11 specialized s
 | 4 | Voting Engine & Concurrency Tests | `tests/Integration/VotingConcurrencyTest.php` | 13 | PASS |
 | 5 | Three Portals & Role Boundary Integration Tests | `tests/Integration/ThreePortalsAuthTest.php` | 13 | PASS |
 | 6 | Three Test Accounts Authentication Tests | `tests/Integration/TestAccountsAuthTest.php` | 15 | PASS |
-| 7 | HTTP & Browser Real-World Journey Tests | `tests/Integration/HttpJourneyTest.php` | 32 | PASS |
+| 7 | HTTP & Browser Real-World Journey Tests | `tests/Integration/HttpJourneyTest.php` | 34 | PASS |
 | 8 | CSRF & Portal Session Lifecycle Tests | `tests/Integration/CsrfPortalLifecycleTest.php` | 9 | PASS |
 | 9 | Master Security Hardening & Concurrency Tests | `tests/Integration/MasterSecurityTest.php` | 37 | PASS |
 | 10 | Database Backup & Recovery Tests | `tests/Integration/BackupRestoreTest.php` | 5 | PASS |
 | 11 | Failure Resilience & Fault Recovery Tests (Phase 12) | `tests/Integration/FailureResilienceTest.php` | 6 | PASS |
-| **TOTAL** | **Complete VerityVote Regression Suite** | **11 Suites** | **156** | **156 / 156 PASS (100%)** |
+| **TOTAL** | **Complete VerityVote Regression Suite** | **11 Suites** | **158** | **158 / 158 PASS (100%)** |
 
 ### Mathematical Verification of Test Count
-$$\text{Total} = 9 + 8 + 9 + 13 + 13 + 15 + 32 + 9 + 37 + 5 + 6 = 156$$
+$$\text{Total} = 9 + 8 + 9 + 13 + 13 + 15 + 34 + 9 + 37 + 5 + 6 = 158$$
 Every single test is accounted for, executes without skipping, and passes 100%.
 
 ---
@@ -121,7 +121,7 @@ In addition to the 149 regression tests, VerityVote includes 5 dedicated load an
 - **RBAC Boundaries**: Cross-portal mismatch tests and role enforcement for test accounts.
 - **Profile Attachment**: Verifies Candidate profile correctly links to dynamically created candidate account.
 
-### 3.7 HTTP & Browser Real-World Journey Tests (26 Tests)
+### 3.7 HTTP & Browser Real-World Journey Tests (34 Tests)
 - **Directory Protection (5 Tests)**: Direct HTTP access to `/app/`, `/config/`, `/database/`, `/storage/logs/`, `/bin/` is denied (HTTP 403).
 - **Public Routing**: Root request `/` properly directs to `/public/`.
 - **Portal Selection Hub**: GET `/public/login` renders three-portal selection interface.
@@ -133,6 +133,15 @@ In addition to the 149 regression tests, VerityVote includes 5 dedicated load an
 - **RBAC Boundaries (3 Tests)**: Student denied from `/admin` (HTTP 403); non-candidate denied from `/candidate` (HTTP 403); candidate denied from `/admin` (HTTP 403).
 - **Voter & Candidate Dashboards (3 Tests)**: Authenticated sessions render voter ballot box and candidate dashboard (HTTP 200 OK).
 - **Live Results Polling API**: JSON endpoint `/public/api/live_results.php` returns structured election turnout data.
+- **Health & Monitoring Observability (8 Tests)**:
+  - Liveness probe (`/public/health/live.php`) returns HTTP 200 OK with runtime memory diagnostics.
+  - Readiness probe (`/public/health/ready.php`) validates MariaDB connectivity, schema tables, and storage permissions (HTTP 200 OK).
+  - Metrics unauthenticated request returns HTTP 401 Unauthorized with `WWW-Authenticate: Bearer` challenge.
+  - Metrics invalid Bearer token returns HTTP 401 Unauthorized.
+  - Metrics valid Bearer token returns HTTP 200 OK and Prometheus telemetry.
+  - Metrics query-string token authentication is strictly rejected (returns HTTP 401 Unauthorized even with valid token).
+  - Metrics authorized administrator session returns HTTP 200 OK without requiring header token.
+  - Metrics secret token is strictly verified to never leak into response headers, response bodies, or application log files.
 
 ### 3.8 CSRF & Portal Session Lifecycle Tests (9 Tests)
 - **CSRF Token Persistence**: Shares consistent token across multi-portal browsing.

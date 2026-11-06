@@ -24,7 +24,14 @@ class Logger
         'session_id',
         'candidate_id',
         'candidate_choice',
-        'choice'
+        'choice',
+        'authorization',
+        'http_authorization',
+        'redirect_http_authorization',
+        'bearer',
+        'metrics_token',
+        'secret',
+        'api_key'
     ];
 
     public static function getCorrelationId(): string
@@ -113,11 +120,15 @@ class Logger
         }
         $logFile = $logDir . '/verityvote-json-' . date('Y-m-d') . '.log';
 
+        $rawRoute = $_SERVER['REQUEST_URI'] ?? ($_SERVER['SCRIPT_NAME'] ?? 'CLI');
+        // Ensure query-string secrets are never stored in structured route logs
+        $cleanRoute = strtok($rawRoute, '?') ?: $rawRoute;
+
         $entry = [
             'timestamp' => date('c'),
             'level' => strtoupper($level),
             'correlation_id' => self::getCorrelationId(),
-            'route' => $_SERVER['REQUEST_URI'] ?? ($_SERVER['SCRIPT_NAME'] ?? 'CLI'),
+            'route' => $cleanRoute,
             'method' => $_SERVER['REQUEST_METHOD'] ?? 'CLI',
             'client_ip' => self::getClientIp(),
             'message' => $message,
@@ -152,11 +163,13 @@ class Logger
     {
         $clean = [];
         foreach ($data as $key => $value) {
-            $lowerKey = strtolower($key);
+            $lowerKey = strtolower((string)$key);
             if (in_array($lowerKey, self::REDACTED_KEYS, true)) {
                 $clean[$key] = '[REDACTED]';
             } elseif (is_array($value)) {
                 $clean[$key] = self::redactSensitiveData($value);
+            } elseif (is_string($value) && preg_match('/Bearer\s+\S+/i', $value)) {
+                $clean[$key] = 'Bearer [REDACTED]';
             } else {
                 $clean[$key] = $value;
             }

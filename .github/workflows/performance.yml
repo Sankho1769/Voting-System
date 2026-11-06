@@ -69,6 +69,7 @@ jobs:
         run: |
           set -e
           cp config/config.example.php config/config.php
+          sed -i "s/'metrics_token' => ''/'metrics_token' => 'vv_ci_metrics_test_token_54321'/" config/config.php
           mkdir -p storage/logs storage/cache
 
       - name: Run Schema and Migrations

@@ -71,9 +71,18 @@ Caching is strictly prohibited from touching authoritative electoral decision ga
 - Verified against 25-burst and 100-burst simultaneous attacks from identical voters with zero duplicate ballots.
 
 ### 2.11 Observability Log Redaction & Ballot Secrecy (Phase 12)
-- `Logger::redactSensitiveData` automatically scrubs passwords, tokens, session IDs, and candidate choices (`candidate_id`, `choice`).
+- `Logger::redactSensitiveData` automatically scrubs passwords, tokens, session IDs, authorization headers (`authorization`, `http_authorization`, `bearer`), metrics secrets, and candidate choices (`candidate_id`, `choice`).
 - A voter's candidate selection is never logged to disk or stored in correlation traces.
 - Participation tracking is physically decoupled from the anonymous `votes` table.
+- Structured JSON logging strips query strings from request URIs to prevent URL-based secret persistence.
+
+### 2.12 Metrics Endpoint Access Control & Token Remediation (Phase 12)
+The Prometheus metrics endpoint (`/public/metrics`) exposes operational diagnostics (active processes, memory consumption, query counts, cache performance). To protect these internal metrics:
+- **Header-Only Bearer Authentication**: Clients must supply `Authorization: Bearer <token>` in the HTTP request headers. Apache `.htaccess` explicitly preserves and forwards this header via `RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]`.
+- **Query-String Rejection**: Tokens supplied via query parameters (`?token=...`) are completely rejected with `HTTP 401 Unauthorized`, even if the token value matches the configured secret. This prevents credential leakage into web server access logs, proxy caches, forwarder traces, or browser history.
+- **Fail-Secure Secret Management**: The metrics secret is loaded from `VV_METRICS_TOKEN` (environment) or protected `config/config.php`. Default fallback secrets are removed from tracked configuration (`config.example.php`). If unconfigured, token authentication fails securely.
+- **Constant-Time Verification**: Tokens are compared using `hash_equals()` to eliminate timing-attack vulnerabilities.
+- **Privileged Session Access**: Authenticated institutional administrators (`Auth::isLoggedIn() && Auth::isAdmin()`) may inspect metrics directly in diagnostic views without separate token headers.
 - **Route-Level Defense in Depth**:
   - `RoleMiddleware(['admin', 'election_officer'])` intercepts `/admin/*` routes, immediately denying unauthorized users with `403 Forbidden`.
   - `CandidateMiddleware` protects `/candidate`, ensuring only approved candidates can view candidate dashboards.

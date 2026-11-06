@@ -59,7 +59,9 @@ Log lines are appended atomically in JSON Lines format (`storage/logs/verityvote
 The logger strictly scrubs all sensitive parameters before persisting to disk or database:
 - `password`, `temp_password`, `new_password`, `password_confirmation`
 - `csrf_token`, `token`, `session_id`, `cookie`
+- `authorization`, `http_authorization`, `bearer`, `metrics_token`, `secret`, `api_key`
 - `candidate_id`, `candidate_choice`, `choice` (Guarantees ballot secrecy: **a voter's choice is NEVER logged anywhere on the server!**)
+- Request routes are stripped of URL query parameters (`strtok($uri, '?')`) to eliminate credential persistence from accidental query-string inputs.
 
 ---
 
@@ -81,6 +83,13 @@ verityvote_auth_lockouts_total 2
 verityvote_http_request_duration_ms_avg_ms 4.16
 verityvote_http_request_duration_ms_max_ms 47.60
 ```
+
+### Metrics Endpoint Security & Access Control
+- **Header-Only Authentication**: Access to `/public/metrics` strictly requires an `Authorization: Bearer <token>` HTTP header.
+- **Strict Query-String Rejection**: To protect against credential leaks in web access logs, proxy caches, and browser histories, URL query parameter authentication (`?token=...`) is strictly rejected with `HTTP 401 Unauthorized`, even if the token is valid.
+- **Fail-Secure Architecture**: If the token is not defined in `VV_METRICS_TOKEN` or `config.php`, token-based access fails securely (returns 401).
+- **Constant-Time Verification**: Token evaluation uses `hash_equals()` to prevent timing side-channel attacks.
+- **Administrative Diagnostic Access**: Logged-in institutional administrators (`Auth::isLoggedIn() && Auth::isAdmin()`) can view Prometheus metrics directly in administrative dashboards.
 
 ---
 

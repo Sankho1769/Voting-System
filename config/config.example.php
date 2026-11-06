@@ -71,6 +71,6 @@ return [
 
     'monitoring' => [
         'metrics_enabled' => true,
-        'metrics_token' => 'vv_metrics_secret_token_change_in_production',
+        'metrics_token' => '', // Set via VV_METRICS_TOKEN environment variable or configure here for production monitoring
     ]
 ];

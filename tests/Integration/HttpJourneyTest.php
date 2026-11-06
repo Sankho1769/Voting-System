@@ -414,42 +414,79 @@ class HttpJourneyTest
             'pass' => ($readyResp['code'] === 200 && ($readyData['status'] ?? '') === 'ready' && ($readyData['checks']['database'] ?? '') === 'ok')
         ];
 
-        // 7.3 Metrics Endpoint: Unauthorized Request (No token and anonymous session)
+        // Load configured test metrics token
+        $configFile = dirname(__DIR__, 2) . '/config/config.php';
+        $cfg = file_exists($configFile) ? require $configFile : [];
+        $metricsToken = getenv('VV_METRICS_TOKEN') ?: ($_SERVER['VV_METRICS_TOKEN'] ?? ($cfg['monitoring']['metrics_token'] ?? ''));
+
+        // 7.3 Metrics Endpoint: Request without credentials returns HTTP 401
         $anonCookie = tempnam(sys_get_temp_dir(), 'vv_anon_');
         $unauthMetrics = $this->request('/public/metrics', 'GET', [], $anonCookie);
-        @unlink($anonCookie);
         $results[] = [
-            'name' => 'HTTP Metrics Security: Accessing /public/metrics without authorization token returns HTTP 401 Unauthorized',
+            'name' => 'HTTP Metrics Security: Request without credentials returns HTTP 401',
             'pass' => ($unauthMetrics['code'] === 401 && strpos($unauthMetrics['headers'], 'WWW-Authenticate: Bearer') !== false)
         ];
 
-        // 7.4 Metrics Endpoint: Authorized Request with Bearer Token
-        $configFile = dirname(__DIR__, 2) . '/config/config.php';
-        $cfg = file_exists($configFile) ? require $configFile : [];
-        $metricsToken = $cfg['monitoring']['metrics_token'] ?? 'vv_metrics_secret_token_change_in_production';
+        // 7.4 Metrics Endpoint: Incorrect Bearer token returns HTTP 401
+        $wrongBearerMetrics = $this->request('/public/metrics', 'GET', [], $anonCookie, [
+            'Authorization: Bearer invalid_unauthorized_token_xyz987'
+        ]);
+        $results[] = [
+            'name' => 'HTTP Metrics Security: Incorrect Bearer token returns HTTP 401',
+            'pass' => ($wrongBearerMetrics['code'] === 401 && strpos($wrongBearerMetrics['headers'], 'WWW-Authenticate: Bearer') !== false)
+        ];
 
-        $authMetrics = $this->request('/public/metrics', 'GET', [], null, [
+        // 7.5 Metrics Endpoint: Correct Bearer token returns HTTP 200
+        $authMetrics = $this->request('/public/metrics', 'GET', [], $anonCookie, [
             "Authorization: Bearer {$metricsToken}"
         ]);
         $hasPrometheusHeader = strpos($authMetrics['body'], 'verityvote_votes_submitted_total') !== false;
         $results[] = [
-            'name' => 'HTTP Metrics Security: Accessing /public/metrics with valid Bearer token returns HTTP 200 and Prometheus telemetry',
+            'name' => 'HTTP Metrics Security: Correct Bearer token returns HTTP 200',
             'pass' => ($authMetrics['code'] === 200 && $hasPrometheusHeader)
         ];
 
-        // 7.5 Metrics Endpoint: Authorized Request with Query Parameter Token
-        $queryMetrics = $this->request("/public/metrics?token={$metricsToken}");
+        // 7.6 Metrics Endpoint: Query-string token returns HTTP 401
+        $queryMetrics = $this->request("/public/metrics?token={$metricsToken}", 'GET', [], $anonCookie);
         $results[] = [
-            'name' => 'HTTP Metrics Security: Accessing /public/metrics with query token returns HTTP 200 and telemetry',
-            'pass' => ($queryMetrics['code'] === 200 && strpos($queryMetrics['body'], 'verityvote_') !== false)
+            'name' => 'HTTP Metrics Security: Query-string token returns HTTP 401',
+            'pass' => ($queryMetrics['code'] === 401 && strpos($queryMetrics['headers'], 'WWW-Authenticate: Bearer') !== false)
         ];
 
-        // 7.6 Metrics Endpoint: Logged-in Administrator Access via Session
+        // 7.7 Metrics Endpoint: Authorized administrator session returns HTTP 200
         $adminMetrics = $this->request('/public/metrics');
         $results[] = [
-            'name' => 'HTTP Metrics Security: Authenticated administrator can access /public/metrics via session',
+            'name' => 'HTTP Metrics Security: Authorized administrator session returns HTTP 200',
             'pass' => ($adminMetrics['code'] === 200 && strpos($adminMetrics['body'], 'verityvote_') !== false)
         ];
+
+        // 7.8 Metrics Endpoint: Token is never included in logs or error messages
+        $errorBodies = $unauthMetrics['body'] . ' ' . $wrongBearerMetrics['body'] . ' ' . $queryMetrics['body'];
+        $errorHeaders = $unauthMetrics['headers'] . ' ' . $wrongBearerMetrics['headers'] . ' ' . $queryMetrics['headers'];
+        $tokenLeakedInResponse = !empty($metricsToken) && (
+            strpos($errorBodies, $metricsToken) !== false ||
+            strpos($errorHeaders, $metricsToken) !== false
+        );
+
+        // Verify Logger redaction does not leak secret tokens
+        \App\Core\Logger::info('Testing metrics token logging redaction', [
+            'authorization' => "Bearer {$metricsToken}",
+            'metrics_token' => $metricsToken,
+            'token' => $metricsToken
+        ]);
+        $logPath = dirname(__DIR__, 2) . '/storage/logs/verityvote-json-' . date('Y-m-d') . '.log';
+        $logContent = file_exists($logPath) ? (file_get_contents($logPath) ?: '') : '';
+        $logLeaked = false;
+        if (!empty($metricsToken) && strpos($logContent, $metricsToken) !== false) {
+            $logLeaked = true;
+        }
+
+        $results[] = [
+            'name' => 'HTTP Metrics Security: Token is never included in logs or error messages',
+            'pass' => (!$tokenLeakedInResponse && !$logLeaked)
+        ];
+
+        @unlink($anonCookie);
 
         return $results;
     }

@@ -84,7 +84,20 @@ if ($path === '/metrics') {
         exit;
     }
 
-    $configuredToken = $cfg['monitoring']['metrics_token'] ?? null;
+    // 1. Load metrics secret from protected environment or configuration
+    $configuredToken = getenv('VV_METRICS_TOKEN');
+    if ($configuredToken === false || $configuredToken === '') {
+        $configuredToken = $_SERVER['VV_METRICS_TOKEN']
+            ?? ($_ENV['VV_METRICS_TOKEN']
+            ?? ($cfg['monitoring']['metrics_token'] ?? null));
+    }
+    if (is_string($configuredToken)) {
+        $configuredToken = trim($configuredToken);
+    } else {
+        $configuredToken = null;
+    }
+
+    // 2. Extract Bearer token exclusively from HTTP headers (query strings are strictly rejected)
     $requestHeaders = function_exists('getallheaders') ? (getallheaders() ?: []) : [];
     $authHeader = $_SERVER['HTTP_AUTHORIZATION']
         ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
@@ -92,20 +105,25 @@ if ($path === '/metrics') {
         ?? $requestHeaders['authorization']
         ?? '';
     $bearerToken = null;
-    if (preg_match('/Bearer\s+(.+)$/i', $authHeader, $matches)) {
+    if (preg_match('/Bearer\s+(\S+)/i', $authHeader, $matches)) {
         $bearerToken = trim($matches[1]);
     }
-    $queryToken = $_GET['token'] ?? null;
-    $providedToken = $bearerToken ?? $queryToken;
 
+    // 3. Administrator session verification
     $isAdmin = Auth::isLoggedIn() && Auth::isAdmin();
-    $isTokenValid = !empty($configuredToken) && !empty($providedToken) && hash_equals($configuredToken, $providedToken);
+
+    // 4. Secure constant-time token comparison (fails securely if secret is missing/empty)
+    $isTokenValid = !empty($configuredToken)
+        && !empty($bearerToken)
+        && is_string($configuredToken)
+        && is_string($bearerToken)
+        && hash_equals($configuredToken, $bearerToken);
 
     if (!$isAdmin && !$isTokenValid) {
         http_response_code(401);
         header('WWW-Authenticate: Bearer realm="VerityVote Metrics"');
         header('Content-Type: text/plain; charset=utf-8');
-        echo "401 Unauthorized: Valid monitoring token or administrator authorization required.\n";
+        echo "401 Unauthorized: Valid Bearer token or administrator session required.\n";
         exit;
     }
 
