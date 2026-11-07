@@ -2,6 +2,24 @@
 
 Welcome to the comprehensive documentation directory for the **VerityVote** Institutional College Voting System.
 
+## Software Engineering & System Design Interview Portfolio (Phase 14)
+- [interview/phase-14/README.md](interview/phase-14/README.md) — **Master Interview Portfolio Index & Suggested Learning Sequence**
+- [interview/phase-14/01-project-introduction.md](interview/phase-14/01-project-introduction.md) — 60-Second, 2-Minute, and 5-Minute Technical Elevator Pitches
+- [interview/phase-14/02-system-architecture.md](interview/phase-14/02-system-architecture.md) — Modular Monolith Architecture & Multi-Tier Walkthrough
+- [interview/phase-14/03-database-engineering.md](interview/phase-14/03-database-engineering.md) — Relational Schema, Covering Indexes & Query Optimization
+- [interview/phase-14/04-voting-concurrency.md](interview/phase-14/04-voting-concurrency.md) — 15-Step Voting Concurrency & 100-Burst Race Condition Defenses
+- [interview/phase-14/05-security-engineering.md](interview/phase-14/05-security-engineering.md) — 14 Security Controls, Threat Model & Anonymity Limitations
+- [interview/phase-14/06-performance-and-scalability.md](interview/phase-14/06-performance-and-scalability.md) — 4-Tier Benchmark Methodology & Measured Baselines
+- [interview/phase-14/07-failure-analysis.md](interview/phase-14/07-failure-analysis.md) — FMEA Matrix & Real-World Failure Case Studies
+- [interview/phase-14/08-engineering-tradeoffs.md](interview/phase-14/08-engineering-tradeoffs.md) — Catalog of 20 Real Architectural Trade-offs
+- [interview/phase-14/09-system-design-scenarios.md](interview/phase-14/09-system-design-scenarios.md) — 10 Realistic System Design Scenarios (10k to 100k Scale)
+- [interview/phase-14/10-interview-question-bank.md](interview/phase-14/10-interview-question-bank.md) — 50 Deep Technical Interview Questions & Answers
+- [interview/phase-14/11-adversarial-interview.md](interview/phase-14/11-adversarial-interview.md) — 25 Tough Adversarial Grilling Questions
+- [interview/phase-14/12-live-demo-runbook.md](interview/phase-14/12-live-demo-runbook.md) — Reproducible 10-Minute Live Project Demonstration Script
+- [interview/phase-14/13-resume-and-github-presentation.md](interview/phase-14/13-resume-and-github-presentation.md) — Resume Bullet Points & Verifiable Metrics
+- [interview/phase-14/14-implemented-vs-proposed.md](interview/phase-14/14-implemented-vs-proposed.md) — Implemented vs. Proposed Reality Matrix
+- [interview/phase-14/15-study-plan.md](interview/phase-14/15-study-plan.md) — 30-Day Master Interview Preparation Roadmap
+
 ## Architecture & System Design
 - [architecture.md](architecture.md) — Multi-tier software architecture, layering, and directory boundaries.
 - [database-design.md](database-design.md) — Relational schema specification, tables, keys, indexes, and ACID transaction rules.

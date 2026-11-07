@@ -19,6 +19,7 @@
 - **Cryptographic Participation Receipts**: Voters receive an HMAC-SHA256 receipt token upon ballot commitment.
 - **Formula-Safe CSV Exports**: Protects administrators from spreadsheet formula injection (CSV DDE) in Microsoft Excel.
 - **Zero Heavyweight Frameworks**: Built using native HTML5, CSS3, Vanilla JS, PHP 8.2+, and MySQLi prepared statements (No React, Node.js, Laravel, or PDO).
+- **Google & Microsoft Software Engineering Interview Portfolio**: 16 comprehensive master documents ([docs/interview/phase-14/](docs/interview/phase-14/README.md)) covering modular monolith architecture, ACID concurrency control, 14 security controls, empirical benchmarks, 20 engineering trade-offs, 10 system design scenarios, and 50 technical interview questions with deep answers.
 
 ---
 
