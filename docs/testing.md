@@ -14,7 +14,7 @@ php tests/run_tests.php
 
 Every test executes in sequence and validates against MySQL/MariaDB and the HTTP server. The verification suite runs against an isolated disposable database (`verityvote_test_suite`) provisioned on-the-fly with dynamic fixtures (`TestFixtureFactory`), ensuring zero pollution and zero risk of accidental dropping or alteration of the primary production database (`verityvote_db`).
 
-The complete suite contains exactly **158 passed tests** across 11 specialized suites:
+The complete suite contains exactly **168 passed tests** across 12 specialized suites:
 
 | Suite # | Suite Name | File | Tests | Status |
 |---|---|---|:---:|:---:|
@@ -29,10 +29,11 @@ The complete suite contains exactly **158 passed tests** across 11 specialized s
 | 9 | Master Security Hardening & Concurrency Tests | `tests/Integration/MasterSecurityTest.php` | 37 | PASS |
 | 10 | Database Backup & Recovery Tests | `tests/Integration/BackupRestoreTest.php` | 5 | PASS |
 | 11 | Failure Resilience & Fault Recovery Tests (Phase 12) | `tests/Integration/FailureResilienceTest.php` | 6 | PASS |
-| **TOTAL** | **Complete VerityVote Regression Suite** | **11 Suites** | **158** | **158 / 158 PASS (100%)** |
+| 12 | Apache Logging & Credential Leakage Prevention Tests (Phase 13) | `tests/Integration/ApacheLoggingSecurityTest.php` | 10 | PASS |
+| **TOTAL** | **Complete VerityVote Regression Suite** | **12 Suites** | **168** | **168 / 168 PASS (100%)** |
 
 ### Mathematical Verification of Test Count
-$$\text{Total} = 9 + 8 + 9 + 13 + 13 + 15 + 34 + 9 + 37 + 5 + 6 = 158$$
+$$\text{Total} = 9 + 8 + 9 + 13 + 13 + 15 + 34 + 9 + 37 + 5 + 6 + 10 = 168$$
 Every single test is accounted for, executes without skipping, and passes 100%.
 
 ---
@@ -168,6 +169,18 @@ Comprehensive automated suite covering all 37 security controls:
 - **Automated Restore (`bin/restore_db.php`)**: Restores database snapshot into a designated target database.
 - **Schema & Data Verification**: Validates that restored database contains all 10 core tables, foreign keys, and rows.
 - **Clean Teardown**: Automatically removes temporary backup files and drops the temporary test database.
+
+### 3.12 Apache Logging & Credential Leakage Prevention Tests (10 Tests)
+- **Scenario A**: Unauthorized metrics request with synthetic query token (`?token=SYNTHETIC_TEST_SECRET_123456`) strictly returns HTTP 401 Unauthorized with `WWW-Authenticate: Bearer` challenge.
+- **Scenario B**: Synthetic token is verified to never appear in any application JSON or file logs (`storage/logs/`).
+- **Scenario C**: Synthetic token is verified absent from Apache access logs (`access.log` / `verityvote_access.log`) after request execution, while verifying path `/public/metrics` was logged cleanly.
+- **Scenario D**: Synthetic token is verified absent from Apache error logs (`error.log` / `verityvote_error.log`) during controlled error scenarios.
+- **Scenario E**: Normal access-log functionality remains operational (validating presence of method, path, protocol, and status code).
+- **Scenario F**: Normal error-log functionality remains operational.
+- **Scenario G**: Valid Bearer-header request (`Authorization: Bearer <token>`) succeeds with HTTP 200 and Prometheus telemetry.
+- **Scenario H**: Authorized administrator session accesses `/public/metrics` successfully without token header.
+- **Scenario I**: Application diagnostics (`/public/health/live.php`, etc.) do not expose authorization headers or secrets.
+- **Scenario J**: Existing logging redaction and URI query-string sanitization (`Logger::sanitizeUri`) continue to pass.
 
 ---
 

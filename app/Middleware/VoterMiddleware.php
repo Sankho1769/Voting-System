@@ -19,7 +19,7 @@ class VoterMiddleware
             Logger::audit(
                 'UNAUTHORIZED_VOTER_ACCESS_ATTEMPT',
                 'route',
-                $_SERVER['REQUEST_URI'] ?? '',
+                Logger::sanitizeUri($_SERVER['REQUEST_URI'] ?? ''),
                 ['user_id' => Auth::id(), 'user_role' => Auth::role()]
             );
 

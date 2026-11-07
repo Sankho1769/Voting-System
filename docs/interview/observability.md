@@ -130,3 +130,34 @@ verityvote_http_request_duration_ms_max_ms 47.60
   "environment": "production"
 }
 ```
+
+---
+
+## 5. Web Server Logging Hardening & Credential Protection (Phase 13)
+
+### The Credential Leakage Vector
+By default, standard web server access logs (such as Apache `combined` format) record the request line using `%r`, which logs `METHOD /path?query HTTP/1.1`. If an attacker, administrator, or misconfigured monitoring scraper passes credentials via URL (e.g. `/public/metrics?token=SECRET_VALUE`), the web server logs the plain-text secret to disk even if the application layer returns `401 Unauthorized`.
+
+### Server-Level Hardened Access Logging
+VerityVote specifies a hardened access log format (`verityvote_secure`):
+```apache
+LogFormat "%h %l %u %t \"%m %U %H\" %>s %b %D" verityvote_secure
+CustomLog "logs/access.log" verityvote_secure
+```
+- `%m`: HTTP Method (`GET`, `POST`)
+- `%U`: URL path strictly excluding query parameters (`/public/metrics`)
+- `%H`: Protocol (`HTTP/1.1`)
+- `%>s`: Response status code
+- `%b`: Response body byte count
+- `%D`: Request latency in microseconds
+- Excludes `%r`, `%q`, `%{User-Agent}i`, and `%{Referer}i` to eliminate credential injection and header poisoning risks.
+
+### Error Log Sanitization
+```apache
+ErrorLogFormat "[%{u}t] [%-m:%l] [pid %P:tid %T] %7F: %E: [client\ %a] %M"
+```
+Eliminates raw request lines and referers containing sensitive query strings from server error logs while retaining client IPs and diagnostic context.
+
+### Application-Layer URI Sanitization
+- `Logger::sanitizeUri($uri)` strips query strings before persisting route information into structured JSON logs and database audit logs.
+- Verified by automated tests in `tests/Integration/ApacheLoggingSecurityTest.php`.

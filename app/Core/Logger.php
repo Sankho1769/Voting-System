@@ -44,6 +44,15 @@ class Logger
         return self::$correlationId;
     }
 
+    public static function sanitizeUri(?string $uri): string
+    {
+        if ($uri === null || $uri === '') {
+            return 'CLI';
+        }
+        $clean = strtok($uri, '?');
+        return $clean !== false && $clean !== '' ? $clean : $uri;
+    }
+
     public static function audit(
         string $action,
         string $entityType,
@@ -56,6 +65,11 @@ class Logger
 
             if ($userId === null) {
                 $userId = Auth::id();
+            }
+
+            // Strip query parameters from route entity identifiers to prevent secret persistence
+            if ($entityId !== null && strpos($entityId, '?') !== false) {
+                $entityId = self::sanitizeUri($entityId);
             }
 
             $ip = self::getClientIp();
@@ -122,7 +136,7 @@ class Logger
 
         $rawRoute = $_SERVER['REQUEST_URI'] ?? ($_SERVER['SCRIPT_NAME'] ?? 'CLI');
         // Ensure query-string secrets are never stored in structured route logs
-        $cleanRoute = strtok($rawRoute, '?') ?: $rawRoute;
+        $cleanRoute = self::sanitizeUri($rawRoute);
 
         $entry = [
             'timestamp' => date('c'),

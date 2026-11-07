@@ -179,7 +179,7 @@ class FileCacheDriver implements CacheDriverInterface
         if (!$items) return;
 
         foreach ($items as $item) {
-            if ($item === '.' || $item === '..' || $item === '.htaccess' || $item === '.gitignore') {
+            if ($item === '.' || $item === '..' || $item === '.htaccess' || $item === '.gitignore' || $item === '.gitkeep') {
                 continue;
             }
             $path = $dir . DIRECTORY_SEPARATOR . $item;

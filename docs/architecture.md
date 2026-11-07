@@ -116,3 +116,24 @@ The presentation layer is decoupled into two complementary stylesheets and an ev
    - CricHeroes live discovery filter engine: real-time multi-attribute search across title, department, position, and candidate names.
    - Dynamic countdown timer ticker updating time remaining until polls close.
    - Accessible show/hide password toggle for all login forms.
+
+---
+
+## 6. Logging Architecture & Credential Leakage Prevention (Phase 13)
+VerityVote employs a hardened, multi-tier logging pipeline ensuring zero credential leakage across all operational logs:
+
+1. **Apache Access Log (`verityvote_secure`)**:
+   - Replaces standard `%r` (`First line of request`) with `\"%m %U %H\"` (HTTP Method, URL path without query string, Protocol).
+   - Prevents sensitive query strings (`/public/metrics?token=...`, password reset tokens, temporary parameters) from ever persisting to web server access logs.
+   - Preserves status code (`%>s`), response bytes (`%b`), and execution latency in microseconds (`%D`), while strictly excluding client-controlled User-Agent and Referer headers.
+2. **Apache Error Log (`ErrorLogFormat`)**:
+   - Formatted as `[%{u}t] [%-m:%l] [pid %P:tid %T] %7F: %E: [client\ %a] %M`.
+   - Excludes raw request strings or referer query strings that could leak tokens during 4xx/5xx error logging.
+3. **Application Structured Logs (`Logger.php`)**:
+   - Rotates daily JSON logs (`storage/logs/verityvote-json-YYYY-MM-DD.log`).
+   - `Logger::sanitizeUri()` automatically strips query parameters from request URIs before logging.
+   - `Logger::redactSensitiveData()` recursively scrubs sensitive keys: `password`, `csrf_token`, `authorization`, `http_authorization`, `bearer`, `metrics_token`, `token`, `secret`, `candidate_id`, `choice`.
+   - Any string matching `Bearer <token>` is masked to `Bearer [REDACTED]`.
+4. **Environment Portability**:
+   - Windows XAMPP: Configured via minimal non-destructive addition to `httpd.conf` and `config/apache-hardened-logging.conf`.
+   - Ubuntu Linux / CI: Pre-configured in `config/apache-vhost.conf` and deployed via GitHub Actions workflow.

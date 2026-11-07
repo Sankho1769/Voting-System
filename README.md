@@ -83,13 +83,13 @@ Select `verityvote_db` to inspect tables, foreign keys, and indexes.
 
 ### 7. Run Automated Test Suite
 ```bash
-# Regression suite (158 passed tests across 11 suites)
+# Regression suite (168 passed tests across 12 suites)
 C:\xampp\php\php.exe tests/run_tests.php
 
 # High-concurrency load & stress benchmark suite (12 passed tests across 5 scenarios)
 C:\xampp\php\php.exe tests/load/run_load_tests.php
 ```
-*Expected: 158 Passed | 0 Failed | 0 Skipped in regression suite; 12/12 Passed in load benchmark suite.*
+*Expected: 168 Passed | 0 Failed | 0 Skipped in regression suite; 12/12 Passed in load benchmark suite.*
 *(Runs against isolated disposable database `verityvote_test_suite` with dynamic test fixtures, keeping primary database untouched).*
 
 ---

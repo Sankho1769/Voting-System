@@ -29,6 +29,7 @@ require_once __DIR__ . '/Integration/CsrfPortalLifecycleTest.php';
 require_once __DIR__ . '/Integration/MasterSecurityTest.php';
 require_once __DIR__ . '/Integration/BackupRestoreTest.php';
 require_once __DIR__ . '/Integration/FailureResilienceTest.php';
+require_once __DIR__ . '/Integration/ApacheLoggingSecurityTest.php';
 
 use Tests\Support\TestDatabaseManager;
 use Tests\Support\TestFixtureFactory;
@@ -43,6 +44,7 @@ use Tests\Integration\CsrfPortalLifecycleTest;
 use Tests\Integration\MasterSecurityTest;
 use Tests\Integration\BackupRestoreTest;
 use Tests\Integration\FailureResilienceTest;
+use Tests\Integration\ApacheLoggingSecurityTest;
 
 echo "========================================================\n";
 echo " VerityVote - Complete Automated Test Suite\n";
@@ -77,6 +79,7 @@ $suites = [
     'MasterSecurityTest (Phase 9)' => MasterSecurityTest::class,
     'Database Backup & Recovery Tests (Phase 10)' => BackupRestoreTest::class,
     'Failure Resilience & Fault Recovery Tests (Phase 12)' => FailureResilienceTest::class,
+    'Apache Logging & Credential Leakage Prevention Tests (Phase 13)' => ApacheLoggingSecurityTest::class,
 ];
 
 $totalPassed = 0;

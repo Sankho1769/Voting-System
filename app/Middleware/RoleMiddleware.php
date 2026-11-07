@@ -19,7 +19,7 @@ class RoleMiddleware
             Logger::audit(
                 'UNAUTHORIZED_ACCESS_ATTEMPT',
                 'route',
-                $_SERVER['REQUEST_URI'] ?? '',
+                Logger::sanitizeUri($_SERVER['REQUEST_URI'] ?? ''),
                 ['required_roles' => $allowedRoles, 'user_role' => Auth::role()]
             );
 

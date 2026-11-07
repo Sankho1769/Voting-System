@@ -83,6 +83,23 @@ The Prometheus metrics endpoint (`/public/metrics`) exposes operational diagnost
 - **Fail-Secure Secret Management**: The metrics secret is loaded from `VV_METRICS_TOKEN` (environment) or protected `config/config.php`. Default fallback secrets are removed from tracked configuration (`config.example.php`). If unconfigured, token authentication fails securely.
 - **Constant-Time Verification**: Tokens are compared using `hash_equals()` to eliminate timing-attack vulnerabilities.
 - **Privileged Session Access**: Authenticated institutional administrators (`Auth::isLoggedIn() && Auth::isAdmin()`) may inspect metrics directly in diagnostic views without separate token headers.
+
+### 2.13 Apache-Level Access & Error Log Hardening (Phase 13)
+Even when an application rejects query-string tokens with HTTP 401, a web server's standard logging format can leak the query string to disk.
+- **Root Cause**: Apache's standard `combined` log format uses `%r` (`First line of request`), which prints `GET /path?token=SECRET HTTP/1.1`.
+- **Hardened Access Log Format (`verityvote_secure`)**:
+  `LogFormat "%h %l %u %t \"%m %U %H\" %>s %b %D" verityvote_secure`
+  - `%m`: HTTP Method (`GET`, `POST`)
+  - `%U`: URL path strictly excluding query parameters (`/public/metrics`)
+  - `%H`: Protocol (`HTTP/1.1`)
+  - `%>s %b`: Status code and byte count
+  - `%D`: Request processing duration in microseconds for latency monitoring
+  - Excludes `%r`, `%q`, `%{User-Agent}i`, and `%{Referer}i` to prevent client-controlled credential injection and log poisoning.
+- **Hardened Error Log Format**:
+  `ErrorLogFormat "[%{u}t] [%-m:%l] [pid %P:tid %T] %7F: %E: [client\ %a] %M"`
+  Excludes full request lines and query strings from server error dumps while preserving process IDs, client IPs, and critical error messages.
+- **Application Route Sanitization**:
+  `Logger::sanitizeUri()` strips query parameters from request URIs across middleware (`CandidateMiddleware`, `RoleMiddleware`, `VoterMiddleware`) and structured audit logs.
 - **Route-Level Defense in Depth**:
   - `RoleMiddleware(['admin', 'election_officer'])` intercepts `/admin/*` routes, immediately denying unauthorized users with `403 Forbidden`.
   - `CandidateMiddleware` protects `/candidate`, ensuring only approved candidates can view candidate dashboards.
