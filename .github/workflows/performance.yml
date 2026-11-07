@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup PHP 8.2
         uses: shivammathur/setup-php@v2
@@ -96,7 +96,7 @@ jobs:
           php tests/load/run_load_tests.php
 
       - name: Publish Performance Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: verityvote-performance-benchmarks
