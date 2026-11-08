@@ -119,7 +119,11 @@ class TestAccountsAuthTest
         ];
 
         // 10. Verify Real HTTP Journeys via Apache cURL
-        $baseUrl = 'http://127.0.0.1/' . basename(dirname(__DIR__, 2)) . '/public';
+        $dir = basename(dirname(__DIR__, 2));
+        if ($dir === 'Voting-System' || !empty(getenv('CI'))) {
+            $dir = 'Baymax_Voting_System';
+        }
+        $baseUrl = 'http://127.0.0.1/' . $dir . '/public';
         $cookieAdmin = tempnam(sys_get_temp_dir(), 'ck_adm_');
         $cookieCand = tempnam(sys_get_temp_dir(), 'ck_cnd_');
         $cookieVoter = tempnam(sys_get_temp_dir(), 'ck_vtr_');

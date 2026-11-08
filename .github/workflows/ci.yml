@@ -55,11 +55,12 @@ jobs:
           # Ensure runner user and Apache permissions
           sudo chmod 755 /home/runner
           sudo chmod -R 755 /home/runner/work
-          mkdir -p storage/logs storage/cache storage/backups storage/uploads
-          sudo chmod -R 777 storage
+          mkdir -p storage/logs storage/cache storage/backups storage/uploads database/backups
+          sudo chmod -R 777 storage database/backups
 
-          # Create directory link in Apache web root
+          # Create directory links in Apache web root
           sudo ln -s "$GITHUB_WORKSPACE" /var/www/html/Baymax_Voting_System
+          sudo ln -s "$GITHUB_WORKSPACE" /var/www/html/Voting-System
 
           # Configure VirtualHost with AllowOverride All
           sudo cp config/apache-vhost.conf /etc/apache2/sites-available/000-default.conf

@@ -36,6 +36,9 @@ class MasterSecurityTest
     public static function run(): array
     {
         $dir = basename(dirname(__DIR__, 2));
+        if ($dir === 'Voting-System' || !empty(getenv('CI'))) {
+            $dir = 'Baymax_Voting_System';
+        }
         self::$baseUrl = "http://localhost/{$dir}/public";
 
         $results = [];

@@ -26,6 +26,9 @@ class HttpJourneyTest
     public function __construct(?string $baseUrl = null)
     {
         $dir = basename(dirname(__DIR__, 2));
+        if ($dir === 'Voting-System' || !empty(getenv('CI'))) {
+            $dir = 'Baymax_Voting_System';
+        }
         $this->baseUrl = rtrim($baseUrl ?? ("http://localhost/{$dir}"), '/');
         $this->cookieFile = tempnam(sys_get_temp_dir(), 'vv_cookie_');
     }

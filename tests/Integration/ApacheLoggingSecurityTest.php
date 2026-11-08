@@ -26,6 +26,9 @@ class ApacheLoggingSecurityTest
     public function __construct()
     {
         $dir = basename(dirname(__DIR__, 2));
+        if ($dir === 'Voting-System' || !empty(getenv('CI'))) {
+            $dir = 'Baymax_Voting_System';
+        }
         $this->baseUrl = "http://localhost/{$dir}";
     }
 

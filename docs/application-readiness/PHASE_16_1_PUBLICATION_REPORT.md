@@ -6,8 +6,8 @@
 **Repository:** https://github.com/Sankho1769/Voting-System<br>
 **Branch:** `main`<br>
 **Base Commit:** `37d342d2e4e2c8c5237fdf43e78c8ce05ee3b1d6`<br>
-**Distribution Archive:** `VerityVote_Clean_Distribution.zip` (574.02 KB / 587,801 bytes)<br>
-**Distribution SHA-256:** `871ea8fca9a9566aa5007f07d50be3e350b83e03b8c914a3a0a0e6d62144adb7`<br>
+**Distribution Archive:** `VerityVote_Clean_Distribution.zip` (574.27 KB / 588,054 bytes)<br>
+**Distribution SHA-256:** `f74dd60600cd9a0db1cf7670c5b9a0ae569f0d9c9a73eb70cb0ba6ac0d4fab1a`<br>
 
 ---
 
@@ -107,8 +107,8 @@ The primary operational database `verityvote_db` remained 100% isolated and froz
 - **Archive File:** `VerityVote_Clean_Distribution.zip`
 - **Location in Repo:** Root directory and `VerityVote_Friend_Handoff/VerityVote_Clean_Distribution.zip` (both `.gitignore` protected).
 - **Archive File Count:** 220 files (264 zip entries including directories and `.gitkeep` files).
-- **Archive Size:** 574.02 KB (587,801 bytes).
-- **SHA-256 Checksum:** `871ea8fca9a9566aa5007f07d50be3e350b83e03b8c914a3a0a0e6d62144adb7`.
+- **Archive Size:** 574.27 KB (588,054 bytes).
+- **SHA-256 Checksum:** `f74dd60600cd9a0db1cf7670c5b9a0ae569f0d9c9a73eb70cb0ba6ac0d4fab1a`.
 
 ### Verification Commands
 ```powershell
@@ -148,8 +148,8 @@ Because GitHub CLI (`gh`) is not installed on the local Windows machine, the rel
    - Standard web browser (Chrome, Edge, Firefox)
 
    ### Asset Verification
-   - **File:** `VerityVote_Clean_Distribution.zip` (574.02 KB)
-   - **SHA-256:** `871ea8fca9a9566aa5007f07d50be3e350b83e03b8c914a3a0a0e6d62144adb7`
+   - **File:** `VerityVote_Clean_Distribution.zip` (574.27 KB)
+   - **SHA-256:** `f74dd60600cd9a0db1cf7670c5b9a0ae569f0d9c9a73eb70cb0ba6ac0d4fab1a`
 
    ### Quick Start
    1. Extract ZIP to `C:\xampp\htdocs\Baymax_Voting_System`.

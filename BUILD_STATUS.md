@@ -2,7 +2,7 @@
 
 **Date:** November 2026
 **Build Status:** **100% COMPLETE, VERIFIED & RELEASE CANDIDATE CERTIFIED (v1.0.0-rc1 Ready)**
-**Friend Handoff Package:** **VerityVote_Friend_Handoff/ (Clean ZIP 574.02 KB, SHA-256 `871ea8fca9a9566aa5007f07d50be3e350b83e03b8c914a3a0a0e6d62144adb7`, 10-Step Guide, Diagnostic Checker)**
+**Friend Handoff Package:** **VerityVote_Friend_Handoff/ (Clean ZIP 574.27 KB, SHA-256 `f74dd60600cd9a0db1cf7670c5b9a0ae569f0d9c9a73eb70cb0ba6ac0d4fab1a`, 10-Step Guide, Diagnostic Checker)**
 **Regression Test Suite:** **193 / 193 PASSING (100% Pass Rate across 14 Suites)**
 **Release Candidate Lifecycle Suite:** **57 / 57 PASSING (100% Pass Rate across 8 End-to-End Steps)**
 **Load & Stress Benchmark Suite:** **12 / 12 PASSING (100% Pass Rate across 5 Scenarios)**
