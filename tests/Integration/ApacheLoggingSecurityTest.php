@@ -1,7 +1,7 @@
 <?php
 /**
  * VerityVote - Apache Logging Security & Credential Leakage Prevention Tests (Phase 13)
- * 
+ *
  * Verifies that query-string tokens and sensitive credentials are never recorded in:
  *  1. Apache access logs
  *  2. Apache error logs
@@ -25,7 +25,8 @@ class ApacheLoggingSecurityTest
 
     public function __construct()
     {
-        $this->baseUrl = 'http://localhost/Baymax_Voting_System';
+        $dir = basename(dirname(__DIR__, 2));
+        $this->baseUrl = "http://localhost/{$dir}";
     }
 
     public static function run(): array

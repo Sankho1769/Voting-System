@@ -17,9 +17,10 @@ class CsrfPortalLifecycleTest
     private string $baseUrl;
     private string $cookieFile;
 
-    public function __construct(string $baseUrl = 'http://localhost/Baymax_Voting_System')
+    public function __construct(?string $baseUrl = null)
     {
-        $this->baseUrl = rtrim($baseUrl, '/');
+        $dir = basename(dirname(__DIR__, 2));
+        $this->baseUrl = rtrim($baseUrl ?? ("http://localhost/{$dir}"), '/');
         $this->cookieFile = tempnam(sys_get_temp_dir(), 'csrf_test_cookie_');
     }
 
@@ -117,7 +118,7 @@ class CsrfPortalLifecycleTest
             'csrf_token' => $adminToken
         ], $adminCookie);
 
-        $adminSuccess = in_array($adminPost['code'], [302, 303]) 
+        $adminSuccess = in_array($adminPost['code'], [302, 303])
                      && (strpos($adminPost['headers'], '/admin') !== false || strpos($adminPost['headers'], 'Location:') !== false);
 
         $results[] = [
@@ -139,7 +140,7 @@ class CsrfPortalLifecycleTest
             'csrf_token' => $candToken
         ], $candCookie);
 
-        $candSuccess = in_array($candPost['code'], [302, 303]) 
+        $candSuccess = in_array($candPost['code'], [302, 303])
                     && (strpos($candPost['headers'], '/candidate') !== false);
 
         $results[] = [
@@ -161,7 +162,7 @@ class CsrfPortalLifecycleTest
             'csrf_token' => $voterToken
         ], $voterCookie);
 
-        $voterSuccess = in_array($voterPost['code'], [302, 303]) 
+        $voterSuccess = in_array($voterPost['code'], [302, 303])
                      && (strpos($voterPost['headers'], '/voter') !== false);
 
         $results[] = [
@@ -207,7 +208,7 @@ class CsrfPortalLifecycleTest
             'csrf_token' => $freshToken
         ], $staleCookie);
 
-        $recoverySuccess = in_array($recoveryPost['code'], [302, 303]) 
+        $recoverySuccess = in_array($recoveryPost['code'], [302, 303])
                         && strpos($recoveryPost['headers'], '/candidate') !== false;
 
         $results[] = [
@@ -228,7 +229,7 @@ class CsrfPortalLifecycleTest
             // No csrf_token provided
         ], $missingCookie);
 
-        $missingHandled = in_array($missingPost['code'], [302, 303]) 
+        $missingHandled = in_array($missingPost['code'], [302, 303])
                        && strpos($missingPost['headers'], '/login/admin') !== false;
 
         $results[] = [

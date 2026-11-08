@@ -1,7 +1,7 @@
 <?php
 /**
  * VerityVote - Complete Automated Test Suite Runner
- * 
+ *
  * Executes all unit, integration, role boundary, HTTP journey, CSRF lifecycle,
  * concurrency, and backup-recovery test suites inside an isolated disposable test
  * database ('verityvote_test_suite'). Strictly safeguards the primary database ('verityvote_db').
@@ -30,6 +30,8 @@ require_once __DIR__ . '/Integration/MasterSecurityTest.php';
 require_once __DIR__ . '/Integration/BackupRestoreTest.php';
 require_once __DIR__ . '/Integration/FailureResilienceTest.php';
 require_once __DIR__ . '/Integration/ApacheLoggingSecurityTest.php';
+require_once __DIR__ . '/Integration/ApplicationReadinessTest.php';
+require_once __DIR__ . '/Integration/DatabaseIsolationSafetyTest.php';
 
 use Tests\Support\TestDatabaseManager;
 use Tests\Support\TestFixtureFactory;
@@ -45,6 +47,8 @@ use Tests\Integration\MasterSecurityTest;
 use Tests\Integration\BackupRestoreTest;
 use Tests\Integration\FailureResilienceTest;
 use Tests\Integration\ApacheLoggingSecurityTest;
+use Tests\Integration\ApplicationReadinessTest;
+use Tests\Integration\DatabaseIsolationSafetyTest;
 
 echo "========================================================\n";
 echo " VerityVote - Complete Automated Test Suite\n";
@@ -57,7 +61,7 @@ try {
     $testDb = TestDatabaseManager::setup();
     echo "   [OK] Connected to disposable test database: '" . TestDatabaseManager::TEST_DB_NAME . "'\n";
     echo "   [OK] Schema and all versioned migrations applied.\n";
-    
+
     // Provision reusable dynamic fixtures
     $fixtures = TestFixtureFactory::createSuiteFixtures($testDb);
     echo "   [OK] Isolated test fixtures provisioned (Visible ID: {$fixtures['visible_id']})\n\n";
@@ -80,6 +84,8 @@ $suites = [
     'Database Backup & Recovery Tests (Phase 10)' => BackupRestoreTest::class,
     'Failure Resilience & Fault Recovery Tests (Phase 12)' => FailureResilienceTest::class,
     'Apache Logging & Credential Leakage Prevention Tests (Phase 13)' => ApacheLoggingSecurityTest::class,
+    'Application Readiness & Management Lifecycle Tests (Phase 15)' => ApplicationReadinessTest::class,
+    'Database Isolation & Primary Database Protection Tests (Phase 15.5)' => DatabaseIsolationSafetyTest::class,
 ];
 
 $totalPassed = 0;

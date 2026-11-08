@@ -69,7 +69,7 @@ foreach ($files as $file) {
     }
 
     echo "Applying: {$migrationName}... ";
-    
+
     // Check if migration 002 already applied via column check
     if ($migrationName === '002_add_candidate_portal_support.sql') {
         $colCheck = $conn->query("SHOW COLUMNS FROM candidates LIKE 'user_id'");
@@ -83,21 +83,44 @@ foreach ($files as $file) {
     }
 
     $sql = file_get_contents($file);
-    if ($conn->multi_query($sql)) {
-        do {
-            if ($result = $conn->store_result()) {
-                $result->free();
-            }
-        } while ($conn->more_results() && $conn->next_result());
+    try {
+        if ($conn->multi_query($sql)) {
+            do {
+                if ($result = $conn->store_result()) {
+                    $result->free();
+                }
+            } while ($conn->more_results() && $conn->next_result());
 
-        $stmt = $conn->prepare("INSERT INTO migrations (migration) VALUES (?)");
-        $stmt->bind_param('s', $migrationName);
-        $stmt->execute();
-        echo "[SUCCESS]\n";
-        $executed++;
-    } else {
-        echo "[FAILED]\nError: " . $conn->error . "\n";
-        exit(1);
+            $stmt = $conn->prepare("INSERT IGNORE INTO migrations (migration) VALUES (?)");
+            $stmt->bind_param('s', $migrationName);
+            $stmt->execute();
+            echo "[SUCCESS]\n";
+            $executed++;
+        } else {
+            $err = $conn->error;
+            if (stripos($err, 'duplicate column') !== false || stripos($err, 'duplicate key') !== false || stripos($err, 'already exists') !== false) {
+                $stmt = $conn->prepare("INSERT IGNORE INTO migrations (migration) VALUES (?)");
+                $stmt->bind_param('s', $migrationName);
+                $stmt->execute();
+                echo "[ALREADY APPLIED IN SCHEMA]\n";
+                $executed++;
+            } else {
+                echo "[FAILED]\nError: " . $err . "\n";
+                exit(1);
+            }
+        }
+    } catch (\Throwable $e) {
+        $msg = $e->getMessage();
+        if (stripos($msg, 'duplicate column') !== false || stripos($msg, 'duplicate key') !== false || stripos($msg, 'already exists') !== false) {
+            $stmt = $conn->prepare("INSERT IGNORE INTO migrations (migration) VALUES (?)");
+            $stmt->bind_param('s', $migrationName);
+            $stmt->execute();
+            echo "[ALREADY APPLIED IN SCHEMA]\n";
+            $executed++;
+        } else {
+            echo "[FAILED]\nError: " . $msg . "\n";
+            exit(1);
+        }
     }
 }
 

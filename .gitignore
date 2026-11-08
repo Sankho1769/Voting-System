@@ -33,3 +33,7 @@ Thumbs.db
 # Distribution archives
 *.zip
 *.tar.gz
+
+# Screenshots and capture scripts
+screenshots/rc/
+bin/capture_rc_screenshots.ps1

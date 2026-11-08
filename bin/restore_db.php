@@ -1,11 +1,11 @@
 <?php
 /**
  * VerityVote - Database Restore Utility
- * 
+ *
  * Safely restores database schema and table data from a verified SQL backup file.
  * Streams queries individually to avoid packet overflow (max_allowed_packet limits).
  * Requires explicit --confirm flag when restoring to the active production database.
- * 
+ *
  * Usage:
  *   php bin/restore_db.php <backup_file> [target_database] [--confirm]
  */
@@ -46,12 +46,40 @@ if (!file_exists($configFile)) {
 $appConfig = require $configFile;
 $dbConfig = $appConfig['database'];
 
+// Check test override if present
+$overrideFile = dirname(__DIR__) . '/storage/.test_database_override';
+$activeConfiguredDb = $dbConfig['database'];
+if (file_exists($overrideFile)) {
+    $overrideDb = trim((string)file_get_contents($overrideFile));
+    if ($overrideDb !== '') {
+        $activeConfiguredDb = $overrideDb;
+    }
+}
+
 if ($targetDb === null) {
-    $targetDb = $dbConfig['database'];
+    $targetDb = $activeConfiguredDb;
+}
+
+// Strict Safety Guardrail: Prevent accidental overwriting of primary production database
+if (strtolower((string)$targetDb) === 'verityvote_db') {
+    $allowProd = getenv('ALLOW_PRODUCTION_RESTORE');
+    if ($allowProd !== 'true' && $allowProd !== '1') {
+        echo "========================================================\n";
+        echo " [SAFETY LOCK] RESTORING DIRECTLY TO 'verityvote_db' BLOCKED\n";
+        echo "========================================================\n";
+        echo "Direct restore into the primary operational database is prohibited\n";
+        echo "to prevent accidental data loss.\n";
+        echo "Restores must be performed into disposable or staging databases.\n";
+        echo "To force in a disaster recovery emergency:\n";
+        echo "  set ALLOW_PRODUCTION_RESTORE=1\n";
+        echo "  php bin/restore_db.php \"{$backupFile}\" verityvote_db --confirm\n";
+        echo "========================================================\n";
+        exit(1);
+    }
 }
 
 // Safety check: if restoring into active configured database, require explicit confirmation
-if ($targetDb === $dbConfig['database'] && !$confirmed) {
+if ($targetDb === $activeConfiguredDb && !$confirmed) {
     echo "========================================================\n";
     echo " [ATTENTION] RESTORE SAFETY CONFIRMATION REQUIRED\n";
     echo "========================================================\n";

@@ -23,9 +23,10 @@ class HttpJourneyTest
     private string $baseUrl;
     private string $cookieFile;
 
-    public function __construct(string $baseUrl = 'http://localhost/Baymax_Voting_System')
+    public function __construct(?string $baseUrl = null)
     {
-        $this->baseUrl = rtrim($baseUrl, '/');
+        $dir = basename(dirname(__DIR__, 2));
+        $this->baseUrl = rtrim($baseUrl ?? ("http://localhost/{$dir}"), '/');
         $this->cookieFile = tempnam(sys_get_temp_dir(), 'vv_cookie_');
     }
 

@@ -31,6 +31,7 @@ $excludedExact = [
 $excludedPrefixes = [
     str_replace('\\', '/', $rootDir . '/.git'),
     str_replace('\\', '/', $rootDir . '/screenshots'),
+    str_replace('\\', '/', $rootDir . '/VerityVote_Friend_Handoff'),
 ];
 
 $dirIterator = new RecursiveDirectoryIterator($rootDir, RecursiveDirectoryIterator::SKIP_DOTS);
@@ -101,13 +102,21 @@ $zip->close();
 
 $zipSize = filesize($zipFile);
 $sizeKb = round($zipSize / 1024, 2);
+$sha256 = hash_file('sha256', $zipFile);
+
+// Synchronize to Friend Handoff directory if present
+$handoffDir = $rootDir . '/VerityVote_Friend_Handoff';
+if (is_dir($handoffDir)) {
+    copy($zipFile, $handoffDir . '/VerityVote_Clean_Distribution.zip');
+}
 
 echo "========================================================\n";
 echo " VerityVote - Clean Distribution Archive Created\n";
 echo "========================================================\n";
 echo " Archive: {$zipFile}\n";
 echo " Total Files Packaged: {$fileCount}\n";
-echo " Archive Size: {$sizeKb} KB\n\n";
+echo " Archive Size: {$sizeKb} KB\n";
+echo " SHA-256 Checksum: {$sha256}\n\n";
 
 // Verify Archive Integrity
 $verifyZip = new ZipArchive();
@@ -120,7 +129,7 @@ if ($verifyZip->open($zipFile) === true) {
     $hasPublicIndex = ($verifyZip->locateName('public/index.php') !== false);
     $hasTests = ($verifyZip->locateName('tests/run_tests.php') !== false);
     $hasScreenshots = ($verifyZip->locateName('screenshots/desktop/home_1440.png') !== false);
-    
+
     echo "  - Contains config.example.php: " . ($hasExampleConfig ? "[OK]" : "[MISSING]") . "\n";
     echo "  - Excluded config.php (local secrets): " . (!$hasConfig ? "[OK - Excluded]" : "[LEAK DETECTED]") . "\n";
     echo "  - Excluded powershell.exe: " . (!$hasPowershell ? "[OK - Excluded]" : "[LEAK DETECTED]") . "\n";
@@ -128,7 +137,7 @@ if ($verifyZip->open($zipFile) === true) {
     echo "  - Contains database/schema.sql: " . ($hasSchema ? "[OK]" : "[MISSING]") . "\n";
     echo "  - Contains public/index.php: " . ($hasPublicIndex ? "[OK]" : "[MISSING]") . "\n";
     echo "  - Contains full test suite: " . ($hasTests ? "[OK]" : "[MISSING]") . "\n";
-    
+
     $hasBackup = ($verifyZip->locateName('bin/backup_db.php') !== false);
     $hasRestore = ($verifyZip->locateName('bin/restore_db.php') !== false);
     $hasProdDoc = ($verifyZip->locateName('docs/production-deployment.md') !== false);

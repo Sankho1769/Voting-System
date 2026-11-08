@@ -31,10 +31,13 @@ use App\Services\ResultsService;
 
 class MasterSecurityTest
 {
-    private static string $baseUrl = 'http://localhost/Baymax_Voting_System/public';
+    private static string $baseUrl = '';
 
     public static function run(): array
     {
+        $dir = basename(dirname(__DIR__, 2));
+        self::$baseUrl = "http://localhost/{$dir}/public";
+
         $results = [];
         $db = Database::getInstance();
         $userRepo = new UserRepository($db);

@@ -1,7 +1,7 @@
 <?php
 /**
  * VerityVote - Dedicated Portal Authentication Tests
- * 
+ *
  * Validates cross-portal authentication, candidate ID syntax, dual candidate/voter authorization,
  * password hash verification, and HTTP role boundaries using isolated dynamic fixtures.
  */
@@ -119,7 +119,7 @@ class TestAccountsAuthTest
         ];
 
         // 10. Verify Real HTTP Journeys via Apache cURL
-        $baseUrl = 'http://127.0.0.1/Baymax_Voting_System/public';
+        $baseUrl = 'http://127.0.0.1/' . basename(dirname(__DIR__, 2)) . '/public';
         $cookieAdmin = tempnam(sys_get_temp_dir(), 'ck_adm_');
         $cookieCand = tempnam(sys_get_temp_dir(), 'ck_cnd_');
         $cookieVoter = tempnam(sys_get_temp_dir(), 'ck_vtr_');

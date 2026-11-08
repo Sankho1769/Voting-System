@@ -234,6 +234,42 @@ class Database
     }
 
     /**
+     * Get the live connected database name directly from the MySQLi session.
+     */
+    public function getConnectedDatabase(): string
+    {
+        $res = $this->getConnection()->query("SELECT DATABASE() as db");
+        if ($res && ($row = $res->fetch_assoc())) {
+            $dbName = (string)($row['db'] ?? '');
+            $res->free();
+            return $dbName;
+        }
+        return '';
+    }
+
+    /**
+     * Enforce strict database identity verification.
+     * Throws a RuntimeException if the live connection is to the primary production database
+     * or is not in the explicitly permitted disposable databases list.
+     *
+     * @param array $allowedDisposables
+     * @throws RuntimeException
+     */
+    public function assertDisposableDatabase(array $allowedDisposables = []): void
+    {
+        $liveDb = $this->getConnectedDatabase();
+        if (strtolower($liveDb) === 'verityvote_db') {
+            throw new RuntimeException("CRITICAL SAFETY REJECTION: Live database connection is to primary database '{$liveDb}'! Test operations strictly prohibited.");
+        }
+        if (!empty($allowedDisposables)) {
+            $allowedLower = array_map('strtolower', $allowedDisposables);
+            if (!in_array(strtolower($liveDb), $allowedLower, true)) {
+                throw new RuntimeException("CRITICAL SAFETY REJECTION: Live database '{$liveDb}' is not in the approved disposable list! Operation rejected.");
+            }
+        }
+    }
+
+    /**
      * Reset connection for testing or fresh requests
      */
     public static function resetInstance(): void

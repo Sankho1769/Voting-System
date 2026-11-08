@@ -1,7 +1,7 @@
 <?php
 /**
  * VerityVote - Disposable Test Database Lifecycle Manager
- * 
+ *
  * Manages automated creation, schema migration, and teardown of the isolated
  * disposable test database ('verityvote_test_suite'). Strictly enforces safety
  * guardrails to ensure the primary database ('verityvote_db') is NEVER touched.
@@ -35,12 +35,12 @@ class TestDatabaseManager
      */
     public static function assertIsDisposable(string $dbName): void
     {
-        if ($dbName !== self::TEST_DB_NAME) {
-            throw new RuntimeException("CRITICAL SAFETY ABORT: Refusing operation on non-disposable database '{$dbName}'!");
-        }
-
         if (strtolower($dbName) === strtolower(self::PRIMARY_DB_NAME) || strpos(strtolower($dbName), 'prod') !== false) {
             throw new RuntimeException("FATAL INTEGRITY VIOLATION: Primary database '{$dbName}' cannot be modified or dropped!");
+        }
+
+        if ($dbName !== self::TEST_DB_NAME) {
+            throw new RuntimeException("CRITICAL SAFETY ABORT: Refusing operation on non-disposable database '{$dbName}'!");
         }
     }
 
@@ -135,12 +135,12 @@ class TestDatabaseManager
         $db = Database::getInstance();
 
         // 6. Verify connection points to disposable database
-        $currDbRes = $db->fetchOne("SELECT DATABASE() as current_db");
-        $currDb = $currDbRes['current_db'] ?? '';
+        $currDb = $db->getConnectedDatabase();
         if ($currDb !== self::TEST_DB_NAME) {
             self::teardown();
             throw new RuntimeException("CRITICAL: Test database setup failed to connect to '" . self::TEST_DB_NAME . "'! Connected to '{$currDb}'. Aborting.");
         }
+        $db->assertDisposableDatabase([self::TEST_DB_NAME]);
 
         return $db;
     }
@@ -194,11 +194,18 @@ class TestDatabaseManager
         Database::resetInstance();
         $db = Database::getInstance();
 
+        $configFile = dirname(__DIR__, 2) . '/config/config.php';
+        if (!file_exists($configFile)) {
+            $configFile = dirname(__DIR__, 2) . '/config/config.example.php';
+        }
+        $config = require $configFile;
+        $expectedDb = $config['database']['database'] ?? self::PRIMARY_DB_NAME;
+
         $currDb = $db->fetchOne("SELECT DATABASE() as current_db")['current_db'] ?? '';
-        if ($currDb !== self::PRIMARY_DB_NAME) {
+        if ($currDb !== $expectedDb) {
             return [
                 'healthy' => false,
-                'message' => "Expected primary database '" . self::PRIMARY_DB_NAME . "', but connected to '{$currDb}'."
+                'message' => "Expected primary database '{$expectedDb}', but connected to '{$currDb}'."
             ];
         }
 
