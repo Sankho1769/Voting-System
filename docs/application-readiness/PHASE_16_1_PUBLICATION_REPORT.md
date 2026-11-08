@@ -6,7 +6,7 @@
 **Repository:** https://github.com/Sankho1769/Voting-System<br>
 **Branch:** `main`<br>
 **Base Commit:** `37d342d2e4e2c8c5237fdf43e78c8ce05ee3b1d6`<br>
-**Distribution Archive:** `VerityVote_Clean_Distribution.zip` (574.27 KB / 588,054 bytes)<br>
+**Distribution Archive:** `VerityVote_Clean_Distribution.zip` (574.78 KB / 588,576 bytes)<br>
 **Distribution SHA-256:** `68541c4aa587c3517379e5f8393c9921506eafad9418f12c5b132f94b42d1b58`<br>
 
 ---
@@ -24,7 +24,11 @@ All code, security controls, diagnostics, test suites, and operational documenta
 The release was published as atomic, logically separated commits on branch `main`:
 
 ```
-* docs(release): add XAMPP installation and friend handoff package
+* 56ca443 fix(test): use direct login attempt repo in isolation test and add CI error annotations
+* 7ada1ad fix(test): harden database isolation canary and security absorption checks for CI runners
+* b6ccd9d fix(ci): ensure Apache virtual host portability and update distribution checksum
+* 371bc18 fix(ci): make database isolation test environment-aware for CI and update release checksums
+* 6ee97b2 docs(release): add XAMPP installation and friend handoff package
 * a3d1fdf fix(security): enforce isolated test databases and safe restoration
 * bef8371 feat(application): complete election management and backup workflows
 * 37d342d docs(interview): add evidence-based software engineering interview portfolio
@@ -36,7 +40,11 @@ The release was published as atomic, logically separated commits on branch `main
 | :--- | :--- | :--- |
 | `bef8371` | `feat(application)` | **Election Management & Backup Workflows:**<br>- Pre-lock draft editing of title, position, department, category, and dates.<br>- Admin candidate approval and rejection controls with audit tracking.<br>- Candidate self-service manifesto updates with IDOR authorization protection.<br>- Whitelist voter enrollment and removal before voting opens.<br>- Database backup generation service (`BackupService.php`) and secure path-traversal-protected download handler.<br>- Server-side pagination across Explore, Candidates, Users, and Audit logs.<br>- New integration suite `ApplicationReadinessTest.php` (15 assertions). |
 | `a3d1fdf` | `fix(security)` | **Database Isolation & Restore Guardrails:**<br>- Added `getConnectedDatabase()` and `assertDisposableDatabase()` to Database core.<br>- Hardened `restore_db.php` with safety gate blocking direct restores to `verityvote_db`.<br>- Dynamic base URL resolution across all integration tests for multi-directory portability.<br>- Added `DatabaseIsolationSafetyTest.php` (10 assertions).<br>- Added read-only `bin/install_check.php` (48 diagnostic checks with masked credentials).<br>- Added release candidate end-to-end validator `bin/rc_lifecycle_validation.php` (57 assertions).<br>- Added distribution audit tool `bin/audit_zip_distribution.php` and link checker `bin/check_docs_links.php`. |
-| `[HEAD]` | `docs(release)` | **Installation Documentation & Friend Handoff:**<br>- Authoritative 10-step XAMPP guide (`docs/installation.md` & `docs/INSTALLATION_GUIDE.md`).<br>- Updated testing and security documentation (`docs/testing.md`, `docs/security.md`).<br>- Complete `VerityVote_Friend_Handoff/` package documentation (`README.md`, `PREREQUISITES.md`, `INSTALLATION_GUIDE.md`, `ADMIN_SETUP.md`, `VERIFICATION_CHECKLIST.md`, `TROUBLESHOOTING.md`, `INSTALLATION_TEST_REPORT_TEMPLATE.md`, `SHA256SUMS.txt`).<br>- Complete Phase 15 and Phase 16 audit and publication reports in `docs/application-readiness/`. |
+| `6ee97b2` | `docs(release)` | **Installation Documentation & Friend Handoff:**<br>- Authoritative 10-step XAMPP guide (`docs/installation.md` & `docs/INSTALLATION_GUIDE.md`).<br>- Updated testing and security documentation (`docs/testing.md`, `docs/security.md`).<br>- Complete `VerityVote_Friend_Handoff/` package documentation (`README.md`, `PREREQUISITES.md`, `INSTALLATION_GUIDE.md`, `ADMIN_SETUP.md`, `VERIFICATION_CHECKLIST.md`, `TROUBLESHOOTING.md`, `INSTALLATION_TEST_REPORT_TEMPLATE.md`, `SHA256SUMS.txt`).<br>- Complete Phase 15 and Phase 16 audit and publication reports in `docs/application-readiness/`. |
+| `371bc18` | `fix(ci)` | **Database Isolation Environment Awareness:**<br>- Handled CI environments without separate Baymax_Voting_System_RC Apache host.<br>- Allowed zero-count baseline for dynamically provisioned fresh CI databases. |
+| `b6ccd9d` | `fix(ci)` | **Apache VirtualHost Portability:**<br>- Handled GitHub Actions runner repository folder name in HTTP journey tests.<br>- Configured web root symlinks in CI workflow. |
+| `7ada1ad` | `fix(test)` | **CI Database Isolation Hardening:**<br>- Added table existence guard for RC database before querying canary elections. |
+| `56ca443` | `fix(test)` | **Direct Login Attempt Isolation & CI Annotations:**<br>- Recorded negative login attempt directly via `LoginAttemptRepository` avoiding session dependencies.<br>- Dynamically resolved creator ID for election foreign key integrity.<br>- Added CI error annotation emitter in `generate_ci_summary.php`. |
 
 ---
 
@@ -76,6 +84,7 @@ The release was published as atomic, logically separated commits on branch `main
 | **Distribution ZIP Security Audit** | `bin/audit_zip_distribution.php` | **PASS** | 0 forbidden files, 0 leaked credentials, 30 core files verified. |
 | **Documentation Link Integrity** | `bin/check_docs_links.php` | **274 / 274 PASS** | Zero broken internal relative documentation links. |
 | **Git Whitespace Hygiene** | `git diff --check` | **PASS** | Zero whitespace or line-ending errors across all staged commits. |
+| **Continuous Integration (CI)** | GitHub Actions (`ci.yml`) | **PASS (100%)** | All 15 pipeline steps succeeded on Ubuntu runner ([Run 42479647958](https://github.com/Sankho1769/Voting-System/actions/runs/42479647958)). |
 
 ---
 
@@ -106,8 +115,8 @@ The primary operational database `verityvote_db` remained 100% isolated and froz
 
 - **Archive File:** `VerityVote_Clean_Distribution.zip`
 - **Location in Repo:** Root directory and `VerityVote_Friend_Handoff/VerityVote_Clean_Distribution.zip` (both `.gitignore` protected).
-- **Archive File Count:** 220 files (264 zip entries including directories and `.gitkeep` files).
-- **Archive Size:** 574.27 KB (588,054 bytes).
+- **Archive File Count:** 221 files (265 zip entries including directories and `.gitkeep` files).
+- **Archive Size:** 574.78 KB (588,576 bytes).
 - **SHA-256 Checksum:** `68541c4aa587c3517379e5f8393c9921506eafad9418f12c5b132f94b42d1b58`.
 
 ### Verification Commands
@@ -148,7 +157,7 @@ Because GitHub CLI (`gh`) is not installed on the local Windows machine, the rel
    - Standard web browser (Chrome, Edge, Firefox)
 
    ### Asset Verification
-   - **File:** `VerityVote_Clean_Distribution.zip` (574.27 KB)
+   - **File:** `VerityVote_Clean_Distribution.zip` (574.78 KB)
    - **SHA-256:** `68541c4aa587c3517379e5f8393c9921506eafad9418f12c5b132f94b42d1b58`
 
    ### Quick Start
