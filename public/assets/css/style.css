@@ -1609,14 +1609,16 @@ h1, h2, h3, .font-serif, .editorial-heading {
   margin-bottom: 2rem;
 }
 
-.data-table {
+.data-table,
+.table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
   font-size: 0.875rem;
 }
 
-.data-table th {
+.data-table th,
+.table th {
   background-color: var(--bg-surface-alt);
   padding: 0.85rem 1.25rem;
   font-size: 0.72rem;
@@ -1627,17 +1629,20 @@ h1, h2, h3, .font-serif, .editorial-heading {
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.data-table td {
+.data-table td,
+.table td {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
 }
 
-.data-table tr:last-child td {
+.data-table tr:last-child td,
+.table tr:last-child td {
   border-bottom: none;
 }
 
-.data-table tr:hover td {
+.data-table tr:hover td,
+.table tr:hover td {
   background-color: var(--bg-surface-subtle);
 }
 

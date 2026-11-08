@@ -94,7 +94,7 @@ $user = Auth::user();
   <?php else: ?>
     <div style="display: flex; flex-direction: column; gap: 2rem;">
       <?php foreach ($profiles as $item): ?>
-        <?php 
+        <?php
           $cand = $item['candidacy'];
           $electionStatus = $cand['election_status'];
           $approvalStatus = $cand['approval_status'];
@@ -130,12 +130,40 @@ $user = Auth::user();
 
           <!-- Campaign Platform Manifesto -->
           <div style="background-color: var(--surface-secondary); padding: 1.25rem 1.5rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; border: 1px solid var(--border-subtle);">
-            <h4 style="margin-bottom: 0.5rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700;">
-              Campaign Manifesto &amp; Platform Statement
-            </h4>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <h4 style="margin: 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700;">
+                Campaign Manifesto &amp; Platform Statement
+              </h4>
+              <?php if (!in_array($electionStatus, ['closed', 'results_published', 'cancelled'], true)): ?>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="const f = document.getElementById('edit-cand-form-<?= (int)$cand['id'] ?>'); f.style.display = f.style.display === 'none' ? 'block' : 'none';" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
+                  &#9998; Edit Platform
+                </button>
+              <?php endif; ?>
+            </div>
             <div style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary); font-style: italic;">
               &ldquo;<?= nl2br(Sanitizer::e($cand['manifesto'] ?: 'No campaign manifesto submitted yet.')) ?>&rdquo;
             </div>
+
+            <?php if (!in_array($electionStatus, ['closed', 'results_published', 'cancelled'], true)): ?>
+              <div id="edit-cand-form-<?= (int)$cand['id'] ?>" style="display: none; margin-top: 1.25rem; border-top: 1px dashed var(--border-subtle); padding-top: 1rem;">
+                <form action="<?= View::url('/candidate/edit') ?>" method="POST" enctype="multipart/form-data">
+                  <?= $csrfField ?>
+                  <input type="hidden" name="candidate_id" value="<?= (int)$cand['id'] ?>">
+                  <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label class="form-label" style="font-size: 0.85rem;">Update Campaign Manifesto Statement</label>
+                    <textarea name="manifesto" class="form-control" rows="3" style="font-size: 0.9rem;" placeholder="Write your key initiatives and campaign message..."><?= Sanitizer::e($cand['manifesto'] ?? '') ?></textarea>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0.85rem;">
+                    <label class="form-label" style="font-size: 0.85rem;">Update Official Campaign Photograph (JPEG/PNG/WebP, max 2MB)</label>
+                    <input type="file" name="photo" class="form-control" accept="image/jpeg,image/png,image/webp" style="font-size: 0.85rem;">
+                  </div>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary btn-sm">Save Profile Updates</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('edit-cand-form-<?= (int)$cand['id'] ?>').style.display = 'none';">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            <?php endif; ?>
           </div>
 
           <!-- Contesting Opponents -->

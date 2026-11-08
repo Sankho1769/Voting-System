@@ -84,4 +84,29 @@ $pageTitle = 'Manage Elections';
       </table>
     </div>
   </div>
+
+  <?php if (!empty($totalPages) && $totalPages > 1): ?>
+    <div class="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap;">
+      <?php
+        $queryParams = $_GET;
+        $prevPage = max(1, $currentPage - 1);
+        $nextPage = min($totalPages, $currentPage + 1);
+      ?>
+      <?php if ($currentPage > 1): ?>
+        <a href="<?= View::url('/admin/elections?' . http_build_query(array_merge($queryParams, ['page' => $prevPage]))) ?>" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.9rem;">
+          &larr; Previous Page
+        </a>
+      <?php endif; ?>
+
+      <div style="font-size: 0.9rem; color: var(--text-muted); background: var(--surface-card); border: 1px solid var(--border-subtle); padding: 0.4rem 1rem; border-radius: var(--radius-md);">
+        Page <strong style="color: var(--text-primary);"><?= (int)$currentPage ?></strong> of <strong style="color: var(--text-primary);"><?= (int)$totalPages ?></strong> (<?= (int)$totalElections ?> elections)
+      </div>
+
+      <?php if ($currentPage < $totalPages): ?>
+        <a href="<?= View::url('/admin/elections?' . http_build_query(array_merge($queryParams, ['page' => $nextPage]))) ?>" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.9rem;">
+          Next Page &rarr;
+        </a>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
 </div>

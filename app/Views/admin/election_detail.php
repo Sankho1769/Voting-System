@@ -12,6 +12,11 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
       &larr; Back to Elections List
     </a>
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <?php if (!$isLocked): ?>
+        <a href="<?= View::url('/admin/elections/edit?id=' . $election['id']) ?>" class="btn btn-secondary btn-sm" style="border-color: var(--brand-purple); color: var(--brand-purple); font-weight: 600;">
+          &#9998; Edit Configuration
+        </a>
+      <?php endif; ?>
       <a href="<?= View::url('/election?id=' . $election['id']) ?>" class="btn btn-secondary btn-sm" target="_blank">
         Public View &rarr;
       </a>
@@ -174,16 +179,38 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
                         </div>
                       </td>
                       <td>
-                        <span class="badge badge-purple" style="font-size: 0.72rem;">
+                        <span class="badge <?= $cand['approval_status'] === 'approved' ? 'badge-purple' : ($cand['approval_status'] === 'pending' ? 'badge-secondary' : 'badge-outline') ?>" style="font-size: 0.72rem;">
                           <?= ucfirst($cand['approval_status']) ?>
                         </span>
+                        <?php if (!$isLocked): ?>
+                          <div style="display: flex; gap: 0.25rem; margin-top: 0.35rem;">
+                            <?php if ($cand['approval_status'] !== 'approved'): ?>
+                              <form action="<?= View::url('/admin/candidates/status') ?>" method="POST" style="display: inline;">
+                                <?= $csrfField ?>
+                                <input type="hidden" name="candidate_id" value="<?= (int)$cand['id'] ?>">
+                                <input type="hidden" name="election_id" value="<?= (int)$election['id'] ?>">
+                                <input type="hidden" name="status" value="approved">
+                                <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.15rem 0.4rem; font-size: 0.68rem; color: #16a34a; border-color: #16a34a;">Approve</button>
+                              </form>
+                            <?php endif; ?>
+                            <?php if ($cand['approval_status'] !== 'rejected'): ?>
+                              <form action="<?= View::url('/admin/candidates/status') ?>" method="POST" style="display: inline;">
+                                <?= $csrfField ?>
+                                <input type="hidden" name="candidate_id" value="<?= (int)$cand['id'] ?>">
+                                <input type="hidden" name="election_id" value="<?= (int)$election['id'] ?>">
+                                <input type="hidden" name="status" value="rejected">
+                                <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.15rem 0.4rem; font-size: 0.68rem; color: var(--vermilion); border-color: var(--vermilion);">Reject</button>
+                              </form>
+                            <?php endif; ?>
+                          </div>
+                        <?php endif; ?>
                       </td>
                       <td style="max-width: 200px; font-size: 0.8rem; color: var(--text-muted);">
                         <?= Sanitizer::e(substr($cand['manifesto'] ?: 'No manifesto', 0, 60)) ?>...
                       </td>
                       <?php if (!$isLocked): ?>
-                        <td>
-                          <form action="<?= View::url('/admin/candidates/delete') ?>" method="POST" onsubmit="return confirm('Remove candidate <?= Sanitizer::e($cand['name']) ?>?');">
+                        <td style="white-space: nowrap;">
+                          <form action="<?= View::url('/admin/candidates/delete') ?>" method="POST" style="display: inline;" onsubmit="return confirm('Remove candidate <?= Sanitizer::e($cand['name']) ?>?');">
                             <?= $csrfField ?>
                             <input type="hidden" name="candidate_id" value="<?= (int)$cand['id'] ?>">
                             <input type="hidden" name="election_id" value="<?= (int)$election['id'] ?>">
@@ -294,6 +321,21 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
                 Authorize Voters by Criteria
               </button>
             </form>
+
+            <div style="border-top: 1px solid var(--border-subtle); margin-top: 1.25rem; padding-top: 1rem;">
+              <h5 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary);">Enroll Single Voter by Roll Number / ID</h5>
+              <form action="<?= View::url('/admin/eligibility/assign-individual') ?>" method="POST" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                <?= $csrfField ?>
+                <input type="hidden" name="election_id" value="<?= (int)$election['id'] ?>">
+                <div style="flex: 1;">
+                  <label for="individual_identifier" class="form-label" style="font-size: 0.8rem; margin-bottom: 0.25rem;">Institutional Roll No / ID</label>
+                  <input type="text" id="individual_identifier" name="identifier" class="form-control" style="font-size: 0.85rem;" required placeholder="e.g. BCA2024-001">
+                </div>
+                <button type="submit" class="btn btn-secondary btn-sm" style="height: 38px;">
+                  + Enroll Voter
+                </button>
+              </form>
+            </div>
           </div>
         <?php endif; ?>
 
@@ -307,12 +349,15 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
                 <th>Name &amp; Dept</th>
                 <th>Role</th>
                 <th>Participation</th>
+                <?php if (!$isLocked): ?>
+                  <th>Action</th>
+                <?php endif; ?>
               </tr>
             </thead>
             <tbody>
               <?php if (empty($eligibleVoters)): ?>
                 <tr>
-                  <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                  <td colspan="<?= !$isLocked ? '5' : '4' ?>" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
                     No voters enrolled on whitelist yet.
                   </td>
                 </tr>
@@ -334,6 +379,20 @@ $isLocked = in_array($election['status'], ['open', 'closed', 'results_published'
                         <span style="font-size: 0.8rem; color: var(--text-muted);">Awaiting</span>
                       <?php endif; ?>
                     </td>
+                    <?php if (!$isLocked): ?>
+                      <td>
+                        <?php if (!(bool)$voter['has_participated']): ?>
+                          <form action="<?= View::url('/admin/eligibility/remove') ?>" method="POST" onsubmit="return confirm('Remove voter <?= Sanitizer::e($voter['identifier']) ?> from this election whitelist?');">
+                            <?= $csrfField ?>
+                            <input type="hidden" name="election_id" value="<?= (int)$election['id'] ?>">
+                            <input type="hidden" name="user_id" value="<?= (int)$voter['id'] ?>">
+                            <button type="submit" class="btn btn-sm btn-outline" style="padding: 0.15rem 0.4rem; font-size: 0.7rem; color: var(--vermilion); border-color: var(--vermilion);">Remove</button>
+                          </form>
+                        <?php else: ?>
+                          <span style="font-size: 0.75rem; color: var(--text-muted);">Locked (Voted)</span>
+                        <?php endif; ?>
+                      </td>
+                    <?php endif; ?>
                   </tr>
                 <?php endforeach; ?>
               <?php endif; ?>

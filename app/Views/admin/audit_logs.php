@@ -24,12 +24,12 @@ $search = $search ?? '';
     <form action="<?= View::url('/admin/audit') ?>" method="GET" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
       <div style="flex: 1; min-width: 220px;">
         <label for="search" class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Search Ledger</label>
-        <input 
-          type="text" 
-          id="search" 
-          name="search" 
-          class="form-control" 
-          placeholder="Filter by Actor ID, Entity #, Correlation ID, or IP..." 
+        <input
+          type="text"
+          id="search"
+          name="search"
+          class="form-control"
+          placeholder="Filter by Actor ID, Entity #, Correlation ID, or IP..."
           value="<?= Sanitizer::e($search) ?>"
         >
       </div>
@@ -84,15 +84,15 @@ $search = $search ?? '';
             <?php foreach ($logs as $log): ?>
               <?php
                 $actionName = $log['action'];
-                $isSecurityAlert = strpos($actionName, 'REJECT') !== false 
-                                || strpos($actionName, 'FAIL') !== false 
-                                || strpos($actionName, 'THROTTLED') !== false 
+                $isSecurityAlert = strpos($actionName, 'REJECT') !== false
+                                || strpos($actionName, 'FAIL') !== false
+                                || strpos($actionName, 'THROTTLED') !== false
                                 || strpos($actionName, 'MISMATCH') !== false
                                 || strpos($actionName, 'UNAUTHORIZED') !== false;
-                $isSuccess = strpos($actionName, 'ACCEPTED') !== false 
-                          || strpos($actionName, 'SUCCESS') !== false 
+                $isSuccess = strpos($actionName, 'ACCEPTED') !== false
+                          || strpos($actionName, 'SUCCESS') !== false
                           || strpos($actionName, 'COMMITTED') !== false;
-                
+
                 $badgeStyle = 'background-color: var(--color-surface-muted); color: var(--color-text-primary);';
                 if ($isSecurityAlert) {
                     $badgeStyle = 'background-color: var(--color-vermilion-subtle); color: var(--color-vermilion-dark); font-weight: 700;';
@@ -141,4 +141,29 @@ $search = $search ?? '';
       </table>
     </div>
   </div>
+
+  <?php if (!empty($totalPages) && $totalPages > 1): ?>
+    <div class="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap;">
+      <?php
+        $queryParams = $_GET;
+        $prevPage = max(1, $currentPage - 1);
+        $nextPage = min($totalPages, $currentPage + 1);
+      ?>
+      <?php if ($currentPage > 1): ?>
+        <a href="<?= View::url('/admin/audit?' . http_build_query(array_merge($queryParams, ['page' => $prevPage]))) ?>" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.9rem;">
+          &larr; Previous Page
+        </a>
+      <?php endif; ?>
+
+      <div style="font-size: 0.9rem; color: var(--text-muted); background: var(--surface-card); border: 1px solid var(--border-subtle); padding: 0.4rem 1rem; border-radius: var(--radius-md);">
+        Page <strong style="color: var(--text-primary);"><?= (int)$currentPage ?></strong> of <strong style="color: var(--text-primary);"><?= (int)$totalPages ?></strong> (<?= (int)$totalLogs ?> audit records)
+      </div>
+
+      <?php if ($currentPage < $totalPages): ?>
+        <a href="<?= View::url('/admin/audit?' . http_build_query(array_merge($queryParams, ['page' => $nextPage]))) ?>" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.9rem;">
+          Next Page &rarr;
+        </a>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
 </div>

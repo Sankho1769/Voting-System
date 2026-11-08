@@ -112,13 +112,13 @@ use App\Helpers\Sanitizer;
           $isResults = ($election['status'] === 'results_published');
           $isClosed = ($election['status'] === 'closed');
           $isDraft = ($election['status'] === 'draft');
-          
+
           $catKey = $election['category'] ?? 'other';
           $catName = $categories[$catKey]['name'] ?? ucwords(str_replace('_', ' ', $catKey));
-          
+
           $isEligible = !empty($election['is_eligible']);
           $hasParticipated = !empty($election['has_participated']);
-          
+
           $searchText = strtolower(
             ($election['title'] ?? '') . ' ' .
             ($election['position'] ?? '') . ' ' .
@@ -126,7 +126,7 @@ use App\Helpers\Sanitizer;
             $catName
           );
         ?>
-        <article class="election-card" 
+        <article class="election-card"
                  data-status="<?= Sanitizer::e($election['status']) ?>"
                  data-category="<?= Sanitizer::e($catKey) ?>"
                  data-department="<?= Sanitizer::e($election['department'] ?? '') ?>"
@@ -243,6 +243,31 @@ use App\Helpers\Sanitizer;
       <?php endforeach; ?>
     <?php endif; ?>
   </div>
+
+  <?php if (!empty($totalPages) && $totalPages > 1): ?>
+    <div class="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 0.75rem; margin-top: 2.5rem; flex-wrap: wrap;">
+      <?php
+        $queryParams = $_GET;
+        $prevPage = max(1, $currentPage - 1);
+        $nextPage = min($totalPages, $currentPage + 1);
+      ?>
+      <?php if ($currentPage > 1): ?>
+        <a href="<?= View::url('/explore?' . http_build_query(array_merge($queryParams, ['page' => $prevPage]))) ?>" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.9rem;">
+          &larr; Previous Page
+        </a>
+      <?php endif; ?>
+
+      <div style="font-size: 0.9rem; color: var(--text-muted); background: var(--surface-card); border: 1px solid var(--border-subtle); padding: 0.4rem 1rem; border-radius: var(--radius-md);">
+        Page <strong style="color: var(--text-primary);"><?= (int)$currentPage ?></strong> of <strong style="color: var(--text-primary);"><?= (int)$totalPages ?></strong> (<?= (int)$totalCount ?> elections)
+      </div>
+
+      <?php if ($currentPage < $totalPages): ?>
+        <a href="<?= View::url('/explore?' . http_build_query(array_merge($queryParams, ['page' => $nextPage]))) ?>" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.9rem;">
+          Next Page &rarr;
+        </a>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
 
   <!-- Empty State Fallback -->
   <div id="discovery-empty-state" class="empty-state" style="display: <?= empty($elections) ? 'block' : 'none' ?>; background-color: var(--surface-card); border-radius: var(--radius-lg); padding: 3.5rem; text-align: center; border: 1px solid var(--border-subtle); margin-top: 1.5rem;">

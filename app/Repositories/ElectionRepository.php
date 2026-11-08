@@ -31,7 +31,7 @@ class ElectionRepository
         );
     }
 
-    public function getAll(array $filters = []): array
+    public function getAll(array $filters = [], ?int $limit = null, int $offset = 0): array
     {
         $this->autoSyncStatuses();
         $params = [];
@@ -111,8 +111,8 @@ class ElectionRepository
                 LEFT JOIN users u ON e.created_by = u.id
                 {$joinEligibility}
                 WHERE {$whereClause}
-                ORDER BY 
-                   CASE 
+                ORDER BY
+                   CASE
                      WHEN e.status = 'open' THEN 1
                      WHEN e.status = 'scheduled' THEN 2
                      WHEN e.status = 'results_published' THEN 3
@@ -121,7 +121,83 @@ class ElectionRepository
                    END,
                    e.opens_at ASC";
 
+        if ($limit !== null) {
+            $sql .= " LIMIT ? OFFSET ?";
+            $params[] = $limit;
+            $params[] = $offset;
+            $types .= 'ii';
+        }
+
         return $this->db->fetchAll($sql, $params, $types);
+    }
+
+    public function countAll(array $filters = []): int
+    {
+        $this->autoSyncStatuses();
+        $params = [];
+        $types = '';
+        $where = ['1=1'];
+
+        $userId = !empty($filters['user_id']) ? (int)$filters['user_id'] : null;
+
+        if (!empty($filters['status'])) {
+            $where[] = "e.status = ?";
+            $params[] = $filters['status'];
+            $types .= 's';
+        }
+
+        if (!empty($filters['category']) && $filters['category'] !== 'all') {
+            $where[] = "e.category = ?";
+            $params[] = $filters['category'];
+            $types .= 's';
+        }
+
+        if (!empty($filters['department']) && $filters['department'] !== 'all') {
+            $where[] = "(e.department = ? OR e.department IS NULL)";
+            $params[] = $filters['department'];
+            $types .= 's';
+        }
+
+        if (!empty($filters['scope'])) {
+            switch ($filters['scope']) {
+                case 'open':
+                case 'live':
+                    $where[] = "e.status = 'open'";
+                    break;
+                case 'upcoming':
+                    $where[] = "e.status IN ('scheduled', 'draft')";
+                    break;
+                case 'completed':
+                    $where[] = "e.status IN ('closed', 'results_published')";
+                    break;
+                case 'results':
+                    $where[] = "e.status = 'results_published'";
+                    break;
+            }
+        }
+
+        if (!empty($filters['for_you']) && $userId !== null) {
+            $where[] = "ee.id IS NOT NULL";
+        }
+
+        if (!empty($filters['search'])) {
+            $term = '%' . $filters['search'] . '%';
+            $where[] = "(e.title LIKE ? OR e.position LIKE ? OR e.department LIKE ? OR e.category LIKE ?)";
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $types .= 'ssss';
+        }
+
+        $joinEligibility = '';
+        if ($userId !== null && !empty($filters['for_you'])) {
+            $joinEligibility = "LEFT JOIN election_eligibility ee ON e.id = ee.election_id AND ee.user_id = {$userId}";
+        }
+
+        $whereClause = implode(' AND ', $where);
+        $sql = "SELECT COUNT(*) FROM elections e {$joinEligibility} WHERE {$whereClause}";
+        return (int)$this->db->fetchValue($sql, $params, $types);
     }
 
     public function getEligibleForUser(int $userId): array
@@ -137,8 +213,8 @@ class ElectionRepository
                 LEFT JOIN users u ON e.created_by = u.id
                 LEFT JOIN election_participation ep ON e.id = ep.election_id AND ep.user_id = ?
                 WHERE e.status IN ('scheduled', 'open', 'closed', 'results_published')
-                ORDER BY 
-                   CASE 
+                ORDER BY
+                   CASE
                      WHEN e.status = 'open' AND ep.id IS NULL THEN 1
                      WHEN e.status = 'open' AND ep.id IS NOT NULL THEN 2
                      WHEN e.status = 'scheduled' THEN 3
@@ -155,8 +231,8 @@ class ElectionRepository
         $category = !empty($data['category']) ? $data['category'] : 'student_council';
         $department = !empty($data['department']) ? $data['department'] : null;
 
-        $sql = "INSERT INTO elections 
-                (title, position, category, department, description, status, opens_at, closes_at, results_visibility, created_by) 
+        $sql = "INSERT INTO elections
+                (title, position, category, department, description, status, opens_at, closes_at, results_visibility, created_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         return $this->db->insert($sql, [
@@ -178,15 +254,15 @@ class ElectionRepository
         $category = !empty($data['category']) ? $data['category'] : 'student_council';
         $department = !empty($data['department']) ? $data['department'] : null;
 
-        $sql = "UPDATE elections 
-                SET title = ?, 
-                    position = ?, 
-                    category = ?, 
-                    department = ?, 
-                    description = ?, 
-                    opens_at = ?, 
-                    closes_at = ?, 
-                    results_visibility = ? 
+        $sql = "UPDATE elections
+                SET title = ?,
+                    position = ?,
+                    category = ?,
+                    department = ?,
+                    description = ?,
+                    opens_at = ?,
+                    closes_at = ?,
+                    results_visibility = ?
                 WHERE id = ?";
 
         return $this->db->mutate($sql, [

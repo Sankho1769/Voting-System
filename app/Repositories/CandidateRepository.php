@@ -20,8 +20,8 @@ class CandidateRepository
         return $this->db->fetchOne(
             "SELECT c.*, e.title as election_title, e.status as election_status, e.position,
                     u.identifier as user_identifier, u.role as user_role, u.department as user_department
-             FROM candidates c 
-             JOIN elections e ON c.election_id = e.id 
+             FROM candidates c
+             JOIN elections e ON c.election_id = e.id
              LEFT JOIN users u ON c.user_id = u.id
              WHERE c.id = ?",
             [$id],
@@ -79,17 +79,17 @@ class CandidateRepository
     {
         if ($approvedOnly) {
             $sql = "SELECT c.*, u.identifier as user_identifier, u.department as user_department
-                    FROM candidates c 
+                    FROM candidates c
                     LEFT JOIN users u ON c.user_id = u.id
-                    WHERE c.election_id = ? AND c.approval_status = 'approved' 
+                    WHERE c.election_id = ? AND c.approval_status = 'approved'
                     ORDER BY c.display_order ASC, c.name ASC";
             return $this->db->fetchAll($sql, [$electionId], 'i');
         }
 
         $sql = "SELECT c.*, u.identifier as user_identifier, u.department as user_department
-                FROM candidates c 
+                FROM candidates c
                 LEFT JOIN users u ON c.user_id = u.id
-                WHERE c.election_id = ? 
+                WHERE c.election_id = ?
                 ORDER BY c.display_order ASC, c.name ASC";
         return $this->db->fetchAll($sql, [$electionId], 'i');
     }
@@ -107,8 +107,8 @@ class CandidateRepository
     {
         $userId = !empty($data['user_id']) ? (int)$data['user_id'] : null;
 
-        $sql = "INSERT INTO candidates 
-                (election_id, user_id, name, manifesto, photo_path, approval_status, display_order) 
+        $sql = "INSERT INTO candidates
+                (election_id, user_id, name, manifesto, photo_path, approval_status, display_order)
                 VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         return $this->db->insert($sql, [
@@ -124,18 +124,18 @@ class CandidateRepository
 
     public function update(int $id, array $data): bool
     {
-        $userId = array_key_exists('user_id', $data) 
-            ? (!empty($data['user_id']) ? (int)$data['user_id'] : null) 
+        $userId = array_key_exists('user_id', $data)
+            ? (!empty($data['user_id']) ? (int)$data['user_id'] : null)
             : null;
 
         if (array_key_exists('user_id', $data)) {
-            $sql = "UPDATE candidates 
+            $sql = "UPDATE candidates
                     SET user_id = ?,
-                        name = ?, 
-                        manifesto = ?, 
-                        photo_path = COALESCE(?, photo_path), 
-                        approval_status = ?, 
-                        display_order = ? 
+                        name = ?,
+                        manifesto = ?,
+                        photo_path = COALESCE(?, photo_path),
+                        approval_status = ?,
+                        display_order = ?
                     WHERE id = ?";
 
             return $this->db->mutate($sql, [
@@ -149,12 +149,12 @@ class CandidateRepository
             ]) >= 0;
         }
 
-        $sql = "UPDATE candidates 
-                SET name = ?, 
-                    manifesto = ?, 
-                    photo_path = COALESCE(?, photo_path), 
-                    approval_status = ?, 
-                    display_order = ? 
+        $sql = "UPDATE candidates
+                SET name = ?,
+                    manifesto = ?,
+                    photo_path = COALESCE(?, photo_path),
+                    approval_status = ?,
+                    display_order = ?
                 WHERE id = ?";
 
         return $this->db->mutate($sql, [
@@ -179,7 +179,7 @@ class CandidateRepository
         return $this->db->mutate($sql, [$id], 'i') > 0;
     }
 
-    public function getAllApprovedWithElections(?string $search = null, ?string $category = null): array
+    public function getAllApprovedWithElections(?string $search = null, ?string $category = null, ?int $limit = null, int $offset = 0): array
     {
         $params = [];
         $types = '';
@@ -210,6 +210,45 @@ class CandidateRepository
                 WHERE {$whereClause}
                 ORDER BY e.opens_at DESC, c.display_order ASC, c.name ASC";
 
+        if ($limit !== null) {
+            $sql .= " LIMIT ? OFFSET ?";
+            $params[] = $limit;
+            $params[] = $offset;
+            $types .= 'ii';
+        }
+
         return $this->db->fetchAll($sql, $params, $types);
+    }
+
+    public function countApprovedWithElections(?string $search = null, ?string $category = null): int
+    {
+        $params = [];
+        $types = '';
+        $where = ["c.approval_status = 'approved'", "e.status IN ('scheduled', 'open', 'closed', 'results_published')"];
+
+        if (!empty($category) && $category !== 'all') {
+            $where[] = "e.category = ?";
+            $params[] = $category;
+            $types .= 's';
+        }
+
+        if (!empty($search)) {
+            $term = '%' . $search . '%';
+            $where[] = "(c.name LIKE ? OR c.manifesto LIKE ? OR e.title LIKE ? OR e.position LIKE ?)";
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
+            $types .= 'ssss';
+        }
+
+        $whereClause = implode(' AND ', $where);
+        $sql = "SELECT COUNT(*)
+                FROM candidates c
+                JOIN elections e ON c.election_id = e.id
+                LEFT JOIN users u ON c.user_id = u.id
+                WHERE {$whereClause}";
+
+        return (int)$this->db->fetchValue($sql, $params, $types);
     }
 }

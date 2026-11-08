@@ -12,6 +12,8 @@ use App\Core\Auth;
 use App\Core\Database;
 use App\Core\Session;
 use App\Core\View;
+use App\Core\CSRF;
+use App\Core\Logger;
 use App\Helpers\CSVExporter;
 use App\Helpers\Sanitizer;
 use App\Middleware\AuthMiddleware;
@@ -32,6 +34,7 @@ use App\Services\CandidateService;
 use App\Services\EligibilityService;
 use App\Services\VotingService;
 use App\Services\ResultsService;
+use App\Services\BackupService;
 
 // Initialize Session
 Session::start();
@@ -175,7 +178,13 @@ switch ($path) {
             $filters['user_id'] = Auth::id();
         }
 
-        $elections = $electionRepo->getAll($filters);
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 18;
+        $offset = ($page - 1) * $perPage;
+
+        $totalElections = $electionRepo->countAll($filters);
+        $totalPages = max(1, (int)ceil($totalElections / $perPage));
+        $elections = $electionRepo->getAll($filters, $perPage, $offset);
         $categories = ElectionService::getCategories();
         $departments = $electionRepo->getDepartments();
 
@@ -185,7 +194,11 @@ switch ($path) {
             'elections' => $elections,
             'categories' => $categories,
             'departments' => $departments,
-            'activeTab' => $_GET['scope'] ?? 'all'
+            'activeTab' => $_GET['scope'] ?? 'all',
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalCount' => $totalElections,
+            'filters' => $filters
         ]);
         exit;
 
@@ -230,13 +243,27 @@ switch ($path) {
     // Public Candidates Directory
     // -----------------------------------------------------------------
     case '/candidates':
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 18;
+        $offset = ($page - 1) * $perPage;
+
+        $search = !empty($_GET['q']) ? (string)$_GET['q'] : null;
+        $category = !empty($_GET['category']) ? (string)$_GET['category'] : null;
+
         $candidateRepo = new CandidateRepository();
-        $candidates = $candidateRepo->getAllApprovedWithElections($_GET['q'] ?? null, $_GET['category'] ?? null);
+        $totalCandidates = $candidateRepo->countApprovedWithElections($search, $category);
+        $totalPages = max(1, (int)ceil($totalCandidates / $perPage));
+        $candidates = $candidateRepo->getAllApprovedWithElections($search, $category, $perPage, $offset);
 
         View::render('public/candidates', [
             'pageTitle' => 'Campus Contenders & Candidates',
             'activeNav' => 'candidates',
-            'candidates' => $candidates
+            'candidates' => $candidates,
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalCount' => $totalCandidates,
+            'search' => $search,
+            'category' => $category
         ]);
         exit;
 
@@ -477,6 +504,29 @@ switch ($path) {
         View::render('candidate/dashboard', $candidateData);
         exit;
 
+    case '/candidate/edit':
+        CandidateMiddleware::handle();
+
+        if ($method === 'POST') {
+            $candidateId = (int)($_POST['candidate_id'] ?? 0);
+            $manifesto = isset($_POST['manifesto']) ? (string)$_POST['manifesto'] : null;
+            $photo = !empty($_FILES['photo']['name']) ? $_FILES['photo'] : null;
+
+            $candidateService = new CandidateService();
+            $res = $candidateService->selfUpdateProfile($candidateId, Auth::id(), $manifesto, $photo);
+
+            if ($res['success']) {
+                Session::setFlash('success', 'Your campaign manifesto and platform photo were updated successfully.');
+            } else {
+                Session::setFlash('error', $res['error']);
+            }
+
+            header('Location: ' . View::url('/candidate'));
+            exit;
+        }
+        header('Location: ' . View::url('/candidate'));
+        exit;
+
     // -----------------------------------------------------------------
     // Collegiate Voter Portal Routes
     // -----------------------------------------------------------------
@@ -657,11 +707,20 @@ switch ($path) {
             'search' => $_GET['search'] ?? ''
         ];
 
-        $users = $userRepo->getAll($filters);
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 50;
+        $offset = ($page - 1) * $perPage;
+
+        $totalUsers = $userRepo->countAll($filters);
+        $totalPages = max(1, (int)ceil($totalUsers / $perPage));
+        $users = $userRepo->getAll($filters, $perPage, $offset);
 
         View::render('admin/users', [
             'users' => $users,
-            'filters' => $filters
+            'filters' => $filters,
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalUsers' => $totalUsers
         ]);
         exit;
 
@@ -809,10 +868,57 @@ switch ($path) {
         RoleMiddleware::handle('admin', 'election_officer');
 
         $electionRepo = new ElectionRepository();
-        $elections = $electionRepo->getAll();
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 50;
+        $offset = ($page - 1) * $perPage;
+
+        $totalElections = $electionRepo->countAll();
+        $totalPages = max(1, (int)ceil($totalElections / $perPage));
+        $elections = $electionRepo->getAll([], $perPage, $offset);
 
         View::render('admin/elections', [
-            'elections' => $elections
+            'elections' => $elections,
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalElections' => $totalElections
+        ]);
+        exit;
+
+    case '/admin/elections/edit':
+        RoleMiddleware::handle('admin', 'election_officer');
+        $id = (int)($_GET['id'] ?? ($_POST['id'] ?? 0));
+
+        $electionRepo = new ElectionRepository();
+        $election = $electionRepo->findById($id);
+
+        if (!$election) {
+            http_response_code(404);
+            View::render('errors/404');
+            exit;
+        }
+
+        if (in_array($election['status'], ['open', 'closed', 'results_published'], true)) {
+            Session::setFlash('error', "Ballot configuration is locked because this election is currently {$election['status']}.");
+            header('Location: ' . View::url('/admin/elections/detail?id=' . $id));
+            exit;
+        }
+
+        if ($method === 'POST') {
+            $electionService = new ElectionService();
+            $res = $electionService->updateElection($id, $_POST, Auth::id());
+
+            if ($res['success']) {
+                Session::setFlash('success', 'Election configuration updated successfully.');
+                header('Location: ' . View::url('/admin/elections/detail?id=' . $id));
+                exit;
+            }
+
+            Session::setFlash('error', $res['error']);
+            $election = array_merge($election, $_POST);
+        }
+
+        View::render('admin/election_edit', [
+            'election' => $election
         ]);
         exit;
 
@@ -930,6 +1036,50 @@ switch ($path) {
         }
         break;
 
+    case '/admin/candidates/status':
+        RoleMiddleware::handle('admin', 'election_officer');
+
+        if ($method === 'POST') {
+            $candidateId = (int)($_POST['candidate_id'] ?? 0);
+            $electionId = (int)($_POST['election_id'] ?? 0);
+            $newStatus = trim($_POST['status'] ?? '');
+
+            $candidateService = new CandidateService();
+            $res = $candidateService->updateApprovalStatus($candidateId, $newStatus, Auth::id());
+
+            if ($res['success']) {
+                Session::setFlash('success', "Candidate status updated to " . ucfirst($newStatus) . ".");
+            } else {
+                Session::setFlash('error', $res['error']);
+            }
+
+            header('Location: ' . View::url('/admin/elections/detail?id=' . $electionId));
+            exit;
+        }
+        break;
+
+    case '/admin/candidates/edit':
+        RoleMiddleware::handle('admin', 'election_officer');
+
+        if ($method === 'POST') {
+            $candidateId = (int)($_POST['candidate_id'] ?? 0);
+            $electionId = (int)($_POST['election_id'] ?? 0);
+            $candidateService = new CandidateService();
+            $photo = !empty($_FILES['photo']['name']) ? $_FILES['photo'] : null;
+
+            $res = $candidateService->updateCandidate($candidateId, $_POST, $photo, Auth::id());
+
+            if ($res['success']) {
+                Session::setFlash('success', 'Candidate information updated successfully.');
+            } else {
+                Session::setFlash('error', $res['error']);
+            }
+
+            header('Location: ' . View::url('/admin/elections/detail?id=' . $electionId));
+            exit;
+        }
+        break;
+
     case '/admin/eligibility/assign-criteria':
         RoleMiddleware::handle('admin', 'election_officer');
 
@@ -952,22 +1102,129 @@ switch ($path) {
         }
         break;
 
+    case '/admin/eligibility/remove':
+        RoleMiddleware::handle('admin', 'election_officer');
+
+        if ($method === 'POST') {
+            $electionId = (int)($_POST['election_id'] ?? 0);
+            $userId = (int)($_POST['user_id'] ?? 0);
+
+            $eligibilityService = new EligibilityService();
+            $res = $eligibilityService->removeVoter($electionId, $userId, Auth::id());
+
+            if ($res['success']) {
+                Session::setFlash('success', 'Voter removed from the election whitelist.');
+            } else {
+                Session::setFlash('error', $res['error']);
+            }
+
+            header('Location: ' . View::url('/admin/elections/detail?id=' . $electionId));
+            exit;
+        }
+        break;
+
+    case '/admin/eligibility/assign-individual':
+        RoleMiddleware::handle('admin', 'election_officer');
+
+        if ($method === 'POST') {
+            $electionId = (int)($_POST['election_id'] ?? 0);
+            $identifier = trim($_POST['identifier'] ?? '');
+
+            $userRepo = new UserRepository();
+            $targetUser = $userRepo->findByIdentifier($identifier);
+
+            if (!$targetUser) {
+                Session::setFlash('error', "No user account found with ID '{$identifier}'.");
+            } else {
+                $eligibilityService = new EligibilityService();
+                $res = $eligibilityService->assignVoters($electionId, [(int)$targetUser['id']], Auth::id());
+
+                if ($res['success']) {
+                    Session::setFlash('success', "Voter '{$targetUser['full_name']}' ({$targetUser['identifier']}) enrolled on whitelist.");
+                } else {
+                    Session::setFlash('error', $res['error']);
+                }
+            }
+
+            header('Location: ' . View::url('/admin/elections/detail?id=' . $electionId));
+            exit;
+        }
+        break;
+
     case '/admin/audit':
         RoleMiddleware::handle('admin');
 
         $actionFilter = !empty($_GET['action']) ? trim($_GET['action']) : null;
         $searchFilter = !empty($_GET['search']) ? trim($_GET['search']) : null;
 
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 50;
+        $offset = ($page - 1) * $perPage;
+
         $auditRepo = new AuditRepository();
-        $logs = $auditRepo->getRecent(100, 0, $actionFilter, $searchFilter);
+        $totalLogs = $auditRepo->countAll($actionFilter, $searchFilter);
+        $totalPages = max(1, (int)ceil($totalLogs / $perPage));
+        $logs = $auditRepo->getRecent($perPage, $offset, $actionFilter, $searchFilter);
         $distinctActions = $auditRepo->getDistinctActions();
 
         View::render('admin/audit_logs', [
             'logs' => $logs,
             'distinctActions' => $distinctActions,
             'selectedAction' => $actionFilter,
-            'search' => $searchFilter
+            'search' => $searchFilter,
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalLogs' => $totalLogs
         ]);
+        exit;
+
+    case '/admin/backups':
+        RoleMiddleware::handle('admin');
+
+        $backupService = new BackupService();
+
+        if ($method === 'POST') {
+            $res = $backupService->createBackup(null, Auth::id());
+
+            if ($res['success']) {
+                Session::setFlash('success', "Backup snapshot created: {$res['filename']} ({$res['total_rows']} records across {$res['tables_count']} tables).");
+            } else {
+                Session::setFlash('error', $res['error']);
+            }
+
+            header('Location: ' . View::url('/admin/backups'));
+            exit;
+        }
+
+        $backups = $backupService->listBackups();
+
+        View::render('admin/backups', [
+            'backups' => $backups
+        ]);
+        exit;
+
+    case '/admin/backups/download':
+        RoleMiddleware::handle('admin');
+        $file = $_GET['file'] ?? '';
+
+        $backupService = new BackupService();
+        $filePath = $backupService->getBackupPath($file);
+
+        if (!$filePath) {
+            http_response_code(404);
+            View::render('errors/404');
+            exit;
+        }
+
+        Logger::audit('DATABASE_BACKUP_DOWNLOADED', 'system', 'database', [
+            'filename' => basename($filePath)
+        ], Auth::id());
+
+        header('Content-Type: application/sql');
+        header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
+        header('Content-Length: ' . (string)filesize($filePath));
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        readfile($filePath);
         exit;
 
     case '/admin/reports':

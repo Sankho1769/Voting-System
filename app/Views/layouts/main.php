@@ -62,7 +62,7 @@ use App\Helpers\Sanitizer;
           <div class="user-capsule">
             <span class="role-badge"><?= Sanitizer::e(ucfirst(Auth::role())) ?></span>
             <span class="user-name" title="Logged in as <?= Sanitizer::e(Auth::identifier()) ?>"><?= Sanitizer::e(Auth::identifier()) ?></span>
-            
+
             <div class="dropdown" style="position: relative; display: inline-block;">
               <button type="button" class="btn btn-secondary btn-sm" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding: 0.35rem 0.6rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.25rem;">
                 <span>Portal</span>
@@ -75,6 +75,7 @@ use App\Helpers\Sanitizer;
                   <a href="<?= View::url('/admin/users') ?>" class="dropdown-item">Manage Accounts</a>
                   <a href="<?= View::url('/admin/reports') ?>" class="dropdown-item">Election Reports</a>
                   <a href="<?= View::url('/admin/audit') ?>" class="dropdown-item">Audit Trail</a>
+                  <a href="<?= View::url('/admin/backups') ?>" class="dropdown-item">Database Backups</a>
                 <?php elseif (Auth::isOfficer()): ?>
                   <a href="<?= View::url('/officer') ?>" class="dropdown-item">Officer Dashboard</a>
                   <a href="<?= View::url('/officer/elections') ?>" class="dropdown-item">Elections</a>

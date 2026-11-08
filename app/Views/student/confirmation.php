@@ -36,6 +36,12 @@ $pageTitle = 'Ballot Submission Receipt';
     </div>
 
     <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+      <button type="button" class="btn btn-secondary" onclick="if(navigator.clipboard){navigator.clipboard.writeText('<?= Sanitizer::e($receipt) ?>').then(function(){alert('Receipt token copied to clipboard!');});}else{prompt('Copy your receipt token:', '<?= Sanitizer::e($receipt) ?>');}">
+        Copy Receipt Token
+      </button>
+      <button type="button" class="btn btn-secondary" onclick="window.print();">
+        Print Receipt
+      </button>
       <a href="<?= View::url('/voter') ?>" class="btn btn-secondary">
         &larr; Return to Ballot Box
       </a>

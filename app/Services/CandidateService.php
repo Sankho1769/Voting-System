@@ -157,6 +157,90 @@ class CandidateService
         return ['success' => true];
     }
 
+    public function updateApprovalStatus(int $candidateId, string $status, int $userId): array
+    {
+        $status = strtolower(trim($status));
+        if (!in_array($status, ['pending', 'approved', 'rejected'], true)) {
+            return ['success' => false, 'error' => 'Invalid approval status. Must be pending, approved, or rejected.'];
+        }
+
+        $candidate = $this->candidateRepo->findById($candidateId);
+        if (!$candidate) {
+            return ['success' => false, 'error' => 'Candidate not found.'];
+        }
+
+        $election = $this->electionRepo->findById((int)$candidate['election_id']);
+        if (!$election) {
+            return ['success' => false, 'error' => 'Associated election not found.'];
+        }
+
+        if (in_array($election['status'], ['open', 'closed', 'results_published'], true)) {
+            return [
+                'success' => false,
+                'error' => "Cannot change candidate approval: Ballot configuration is locked while election is {$election['status']}."
+            ];
+        }
+
+        $this->candidateRepo->updateStatus($candidateId, $status);
+
+        Logger::audit('CANDIDATE_STATUS_CHANGED', 'candidate', (string)$candidateId, [
+            'election_id' => $candidate['election_id'],
+            'candidate_name' => $candidate['name'],
+            'previous_status' => $candidate['approval_status'],
+            'new_status' => $status
+        ], $userId);
+
+        $this->cacheService->invalidateCandidates((int)$candidate['election_id']);
+
+        return ['success' => true, 'new_status' => $status];
+    }
+
+    public function selfUpdateProfile(int $candidateId, int $userId, ?string $manifesto, ?array $photoFile): array
+    {
+        $candidate = $this->candidateRepo->findById($candidateId);
+        if (!$candidate) {
+            return ['success' => false, 'error' => 'Candidate profile not found.'];
+        }
+
+        if ((int)($candidate['user_id'] ?? 0) !== $userId) {
+            return ['success' => false, 'error' => 'Unauthorized: You can only edit your own candidacy profile.'];
+        }
+
+        $election = $this->electionRepo->findById((int)$candidate['election_id']);
+        if (!$election || in_array($election['status'], ['closed', 'results_published', 'cancelled'], true)) {
+            return ['success' => false, 'error' => 'Cannot edit profile: This election has closed or completed.'];
+        }
+
+        $cleanManifesto = $manifesto !== null ? Sanitizer::cleanText($manifesto) : $candidate['manifesto'];
+
+        $photoPath = $candidate['photo_path'];
+        if ($photoFile && !empty($photoFile['tmp_name'])) {
+            $uploadRes = $this->processPhotoUpload($photoFile);
+            if (!$uploadRes['success']) {
+                return $uploadRes;
+            }
+            $photoPath = $uploadRes['path'];
+        }
+
+        $this->candidateRepo->update($candidateId, [
+            'name' => $candidate['name'],
+            'manifesto' => $cleanManifesto,
+            'photo_path' => $photoPath,
+            'approval_status' => $candidate['approval_status'],
+            'display_order' => (int)$candidate['display_order']
+        ]);
+
+        Logger::audit('CANDIDATE_SELF_PROFILE_UPDATED', 'candidate', (string)$candidateId, [
+            'election_id' => $candidate['election_id'],
+            'manifesto_updated' => ($manifesto !== null),
+            'photo_updated' => ($photoFile && !empty($photoFile['tmp_name']))
+        ], $userId);
+
+        $this->cacheService->invalidateCandidates((int)$candidate['election_id']);
+
+        return ['success' => true];
+    }
+
     public function deleteCandidate(int $id, int $userId): array
     {
         $candidate = $this->candidateRepo->findById($id);

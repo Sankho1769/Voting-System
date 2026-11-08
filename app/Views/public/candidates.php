@@ -38,8 +38,10 @@ use App\Helpers\Sanitizer;
         ?>
         <div class="card candidate-list-card" data-search="<?= Sanitizer::e($candSearch) ?>" style="padding: 1.75rem; display: flex; gap: 1.25rem;">
           <div class="candidate-avatar" style="flex-shrink: 0; width: 68px; height: 68px;">
-            <?php if (!empty($cand['photo_url'])): ?>
-              <img src="<?= Sanitizer::e($cand['photo_url']) ?>" alt="<?= Sanitizer::e($cand['name']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
+            <?php if (!empty($cand['photo_path'])): ?>
+              <img src="<?= View::asset($cand['photo_path']) ?>" alt="<?= Sanitizer::e($cand['name']) ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-md);">
+            <?php elseif (!empty($cand['photo_url'])): ?>
+              <img src="<?= Sanitizer::e($cand['photo_url']) ?>" alt="<?= Sanitizer::e($cand['name']) ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-md);">
             <?php else: ?>
               <span style="font-family: var(--font-display); font-weight: 800; font-size: 1.75rem; color: var(--brand-purple);">
                 <?= Sanitizer::e(strtoupper(substr($cand['name'], 0, 1))) ?>
@@ -58,7 +60,7 @@ use App\Helpers\Sanitizer;
             </div>
 
             <div style="font-size: 0.85rem; color: var(--brand-purple); font-weight: 600; margin-bottom: 0.5rem;">
-              Contesting: 
+              Contesting:
               <a href="<?= View::url('/election?id=' . (int)$cand['election_id']) ?>" style="color: inherit; text-decoration: underline;">
                 <?= Sanitizer::e($cand['election_title'] ?? 'Campus Election') ?>
               </a>
@@ -86,6 +88,31 @@ use App\Helpers\Sanitizer;
         </div>
       <?php endforeach; ?>
     </div>
+
+    <?php if (!empty($totalPages) && $totalPages > 1): ?>
+      <div class="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 0.75rem; margin-top: 2.5rem; flex-wrap: wrap;">
+        <?php
+          $queryParams = $_GET;
+          $prevPage = max(1, $currentPage - 1);
+          $nextPage = min($totalPages, $currentPage + 1);
+        ?>
+        <?php if ($currentPage > 1): ?>
+          <a href="<?= View::url('/candidates?' . http_build_query(array_merge($queryParams, ['page' => $prevPage]))) ?>" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.9rem;">
+            &larr; Previous Page
+          </a>
+        <?php endif; ?>
+
+        <div style="font-size: 0.9rem; color: var(--text-muted); background: var(--surface-card); border: 1px solid var(--border-subtle); padding: 0.4rem 1rem; border-radius: var(--radius-md);">
+          Page <strong style="color: var(--text-primary);"><?= (int)$currentPage ?></strong> of <strong style="color: var(--text-primary);"><?= (int)$totalPages ?></strong> (<?= (int)$totalCount ?> contenders)
+        </div>
+
+        <?php if ($currentPage < $totalPages): ?>
+          <a href="<?= View::url('/candidates?' . http_build_query(array_merge($queryParams, ['page' => $nextPage]))) ?>" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.9rem;">
+            Next Page &rarr;
+          </a>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
   <?php else: ?>
     <div class="empty-state" style="background-color: var(--surface-card); border-radius: var(--radius-lg); padding: 3.5rem; text-align: center; border: 1px solid var(--border-subtle);">
       <h3 style="font-family: var(--font-display); font-size: 1.75rem; color: var(--text-primary); margin-bottom: 0.5rem;">No Approved Candidates Registered</h3>
