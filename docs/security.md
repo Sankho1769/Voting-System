@@ -149,9 +149,19 @@ When a voter casts a ballot, `VotingRepository::recordBallot` strictly enforces 
 - **Correlation ID Tracing**: Every HTTP request and CLI command generates or propagates a unique 64-character trace identifier (`req_<hex>`) stored in `audit_logs.correlation_id`.
 - **Absolute Choice Redaction**: `Logger::audit` strictly redacts `candidate_id`, `candidate_choice`, and choice payloads from audit logs. Voter candidate choices NEVER leak into audit trails or log files.
 
+### 2.14 Test Isolation, Live Database Verification & Production Immutability (Phase 15.5)
+To completely prevent automated QA suites, regression tests, or negative-path HTTP attacks from mutating or polluting the operational database (`verityvote_db`):
+- **Live Database Identity Verification**: In `app/Core/Database.php`, `getConnectedDatabase()` queries `SELECT DATABASE()` on the live MySQLi connection. `assertDisposableDatabase(array $allowedDisposables)` guarantees that any test runner or test fixture generator aborts immediately if connected to `verityvote_db`, throwing a `RuntimeException` with `CRITICAL SAFETY REJECTION`.
+- **CLI Test Harness Isolation**: `TestDatabaseManager::setup()` provisions `verityvote_test_suite`, dynamically registers an isolated override file (`storage/.test_database_override`), asserts disposable database identity, and cleanly drops the test database upon test suite completion.
+- **Apache HTTP Test Isolation**: Automated browser and HTTP journey acceptance tests run against an isolated Release Candidate directory (`C:\xampp\htdocs\Baymax_Voting_System_RC`) targeting a dedicated disposable database (`verityvote_install_test_20261108`). Negative-path requests (invalid passwords, CSRF tampering, brute-force rate limiting) are absorbed exclusively by the disposable database.
+- **Production Override Immunity**: In `config/config.php`, when `APP_ENV === 'production'`, database overrides are strictly disabled, and all user-supplied parameters (`$_GET`, `$_POST`, `$_COOKIE`) are completely ignored.
+
 ---
 
 ## 3. Ballot Privacy & Anonymity Analysis
+
+> [!IMPORTANT]
+> Structural separation of voter participation and anonymous ballot records was verified. The `votes` table does not contain a voter-identifying `user_id` column. This does not establish cryptographic anonymity against a database administrator or all possible metadata correlation.
 
 | Risk / Threat | Mitigation Implemented | Security Level |
 |---|---|---|

@@ -14,7 +14,7 @@ php tests/run_tests.php
 
 Every test executes in sequence and validates against MySQL/MariaDB and the HTTP server. The verification suite runs against an isolated disposable database (`verityvote_test_suite`) provisioned on-the-fly with dynamic fixtures (`TestFixtureFactory`), ensuring zero pollution and zero risk of accidental dropping or alteration of the primary production database (`verityvote_db`).
 
-The complete suite contains exactly **168 passed tests** across 12 specialized suites:
+The complete suite contains exactly **193 passed tests** across 14 specialized suites:
 
 | Suite # | Suite Name | File | Tests | Status |
 |---|---|---|:---:|:---:|
@@ -30,10 +30,12 @@ The complete suite contains exactly **168 passed tests** across 12 specialized s
 | 10 | Database Backup & Recovery Tests | `tests/Integration/BackupRestoreTest.php` | 5 | PASS |
 | 11 | Failure Resilience & Fault Recovery Tests (Phase 12) | `tests/Integration/FailureResilienceTest.php` | 6 | PASS |
 | 12 | Apache Logging & Credential Leakage Prevention Tests (Phase 13) | `tests/Integration/ApacheLoggingSecurityTest.php` | 10 | PASS |
-| **TOTAL** | **Complete VerityVote Regression Suite** | **12 Suites** | **168** | **168 / 168 PASS (100%)** |
+| 13 | Application Readiness & Management Lifecycle Tests (Phase 15) | `tests/Integration/ApplicationReadinessTest.php` | 15 | PASS |
+| 14 | Database Isolation & Primary Database Protection Tests (Phase 15.5) | `tests/Integration/DatabaseIsolationSafetyTest.php` | 10 | PASS |
+| **TOTAL** | **Complete VerityVote Regression Suite** | **14 Suites** | **193** | **193 / 193 PASS (100%)** |
 
 ### Mathematical Verification of Test Count
-$$\text{Total} = 9 + 8 + 9 + 13 + 13 + 15 + 34 + 9 + 37 + 5 + 6 + 10 = 168$$
+$$\text{Total} = 9 + 8 + 9 + 13 + 13 + 15 + 34 + 9 + 37 + 5 + 6 + 10 + 15 + 10 = 193$$
 Every single test is accounted for, executes without skipping, and passes 100%.
 
 ---
@@ -181,6 +183,27 @@ Comprehensive automated suite covering all 37 security controls:
 - **Scenario H**: Authorized administrator session accesses `/public/metrics` successfully without token header.
 - **Scenario I**: Application diagnostics (`/public/health/live.php`, etc.) do not expose authorization headers or secrets.
 - **Scenario J**: Existing logging redaction and URI query-string sanitization (`Logger::sanitizeUri`) continue to pass.
+
+### 3.13 Application Readiness & Management Lifecycle Tests (15 Tests)
+- **Election Edit**: Successfully updates title, position, description, and visibility in draft state.
+- **Candidate Approval Lifecycle**: Admin can approve and reject candidates in draft state.
+- **Voter Whitelist Management**: Enrolling voter succeeds; removing enrolled voter succeeds before opening.
+- **Candidate Self-Service**: Candidate updates their own manifesto; IDOR defense prevents unauthorized modifications.
+- **Election Lock Enforcement**: Configuration updates, candidate changes, and whitelist modifications are strictly rejected once election is open.
+- **Database Backup Service**: Creates transactional SQL backups; lists archives; blocks path traversal attacks in download handler.
+- **Pagination**: Verifies limit, offset, and countAll queries for elections and approved candidates.
+
+### 3.14 Database Isolation & Primary Database Protection Tests (10 Tests)
+- **Isolation A**: CLI test runner connected to `verityvote_test_suite` is permitted.
+- **Isolation B**: RC operations connected to `verityvote_install_test_20261108` are permitted.
+- **Isolation C**: Any test-data-generating process connected to `verityvote_db` is rejected with `CRITICAL SAFETY REJECTION`.
+- **Isolation D**: Database override cannot be bypassed by passing an arbitrary configuration value.
+- **Isolation E**: Apache HTTP canary probe proves actual application queries RC database while absent from `verityvote_db`.
+- **Isolation F**: Negative-path authentication tests create security events in disposable DB only (main DB $\Delta = 0$).
+- **Isolation G**: Main database `audit_logs` count remains strictly 6,104.
+- **Isolation H**: Main database `login_attempts` count remains strictly 199.
+- **Isolation I**: Main database core records remain unchanged (Users: 1,399, Elections: 496, Candidates: 945, Votes: 904).
+- **Isolation J**: Production mode cannot enable test database overrides through user-controlled parameters.
 
 ---
 

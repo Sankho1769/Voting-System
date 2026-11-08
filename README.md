@@ -15,7 +15,7 @@
 - **Strict Single-Position Elections**: Every election represents exactly one institutional office (President, General Secretary, Class Representative).
 - **Deterministic State Machine**: `Draft` &rarr; `Scheduled` &rarr; `Open` &rarr; `Closed` &rarr; `Results Published` with ballot configuration locks once voting opens.
 - **ACID Double-Voting Defense**: Database transactions with row-level locks guarantee each voter participates at most once across concurrent requests.
-- **Ballot Privacy**: Participation tracking is strictly decoupled from candidate choices; the `votes` table contains no `user_id` column.
+- **Structural Ballot Separation**: Structural separation of voter participation and anonymous ballot records was verified. The `votes` table does not contain a voter-identifying `user_id` column. This does not establish cryptographic anonymity against a database administrator or all possible metadata correlation.
 - **Cryptographic Participation Receipts**: Voters receive an HMAC-SHA256 receipt token upon ballot commitment.
 - **Formula-Safe CSV Exports**: Protects administrators from spreadsheet formula injection (CSV DDE) in Microsoft Excel.
 - **Zero Heavyweight Frameworks**: Built using native HTML5, CSS3, Vanilla JS, PHP 8.2+, and MySQLi prepared statements (No React, Node.js, Laravel, or PDO).
@@ -82,16 +82,18 @@ http://localhost/phpmyadmin/
 ```
 Select `verityvote_db` to inspect tables, foreign keys, and indexes.
 
-### 7. Run Automated Test Suite
+### 7. Run Installation Health Check & Automated Test Suite
 ```bash
-# Regression suite (168 passed tests across 12 suites)
-C:\xampp\php\php.exe tests/run_tests.php
+# 1. Comprehensive read-only installation health check (48 checks across 9 diagnostic layers)
+C:\xampp\php\php.exe bin/install_check.php
 
-# High-concurrency load & stress benchmark suite (12 passed tests across 5 scenarios)
-C:\xampp\php\php.exe tests/load/run_load_tests.php
+# 2. Full regression suite (193 passed tests across 14 suites)
+C:\xampp\php\php.exe tests/run_tests.php
 ```
-*Expected: 168 Passed | 0 Failed | 0 Skipped in regression suite; 12/12 Passed in load benchmark suite.*
+*Expected: 193 Passed | 0 Failed | 0 Skipped (100% pass rate across 14 suites).*
 *(Runs against isolated disposable database `verityvote_test_suite` with dynamic test fixtures, keeping primary database untouched).*
+
+For the detailed 10-step installation sequence and production setup, refer to **[docs/installation.md](docs/installation.md)**.
 
 ---
 

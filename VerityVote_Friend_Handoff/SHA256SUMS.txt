@@ -1,0 +1,11 @@
+062fe9f862d8aa766a2adca6a93f0fbe593520fdbc4f30c7f7b2c748e74ef9f1 *VerityVote_Clean_Distribution.zip
+
+# Verification Instructions for Windows:
+#
+# Option A: Using Windows PowerShell (Built into Windows 10 & 11):
+#   Get-FileHash -Path "VerityVote_Clean_Distribution.zip" -Algorithm SHA256
+#
+# Option B: Using Windows Command Prompt (CertUtil):
+#   certutil -hashfile VerityVote_Clean_Distribution.zip SHA256
+#
+# Compare the output hash to the hash listed above. They must match exactly.
