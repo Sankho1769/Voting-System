@@ -197,10 +197,11 @@ class DatabaseIsolationSafetyTest
                 // proving it does not leak into primary database
                 $testDb = Database::getInstance();
                 $testDbName = $testDb->getConnectedDatabase();
+                $creatorId = (int)($testDb->fetchValue("SELECT id FROM users ORDER BY id ASC LIMIT 1") ?: 1);
                 $testDb->execute(
                     "INSERT INTO elections (title, position, description, category, department, opens_at, closes_at, status, created_by, created_at, updated_at)
-                     VALUES (?, 'Test Delegate', 'Probe canary', 'other', 'Testing', ?, ?, 'open', 1, ?, ?)",
-                    [$canaryTitle, $now, $end, $now, $now]
+                     VALUES (?, 'Test Delegate', 'Probe canary', 'other', 'Testing', ?, ?, 'open', ?, ?, ?)",
+                    [$canaryTitle, $now, $end, $creatorId, $now, $now]
                 );
                 $canaryId = (int)$testDb->lastInsertId();
 
@@ -282,9 +283,9 @@ class DatabaseIsolationSafetyTest
                 $preTestAudits = (int)$testDb->fetchValue("SELECT COUNT(*) FROM audit_logs");
                 $preTestLogins = (int)$testDb->fetchValue("SELECT COUNT(*) FROM login_attempts");
 
-                // Trigger a negative login attempt in test environment
-                $authService = new \App\Services\AuthService(new \App\Repositories\UserRepository($testDb));
-                $authService->authenticate('nonexistent_user_' . bin2hex(random_bytes(3)), 'WrongPassword123!');
+                // Trigger a negative login attempt directly in test environment
+                $loginAttemptRepo = new \App\Repositories\LoginAttemptRepository($testDb);
+                $loginAttemptRepo->recordAttempt('canary_neg_login_' . bin2hex(random_bytes(3)), '127.0.0.1', false);
 
                 $postTestLogins = (int)$testDb->fetchValue("SELECT COUNT(*) FROM login_attempts");
                 $postMainAudits = (int)$mainDb->fetchValue("SELECT COUNT(*) FROM audit_logs");

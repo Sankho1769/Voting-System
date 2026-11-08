@@ -7,7 +7,7 @@
 **Branch:** `main`<br>
 **Base Commit:** `37d342d2e4e2c8c5237fdf43e78c8ce05ee3b1d6`<br>
 **Distribution Archive:** `VerityVote_Clean_Distribution.zip` (574.27 KB / 588,054 bytes)<br>
-**Distribution SHA-256:** `9ec0fbfc6d5bcca6a44c5908a862f29e5e4fd4979f6d1d27a87d978de8272dd0`<br>
+**Distribution SHA-256:** `68541c4aa587c3517379e5f8393c9921506eafad9418f12c5b132f94b42d1b58`<br>
 
 ---
 
@@ -108,7 +108,7 @@ The primary operational database `verityvote_db` remained 100% isolated and froz
 - **Location in Repo:** Root directory and `VerityVote_Friend_Handoff/VerityVote_Clean_Distribution.zip` (both `.gitignore` protected).
 - **Archive File Count:** 220 files (264 zip entries including directories and `.gitkeep` files).
 - **Archive Size:** 574.27 KB (588,054 bytes).
-- **SHA-256 Checksum:** `9ec0fbfc6d5bcca6a44c5908a862f29e5e4fd4979f6d1d27a87d978de8272dd0`.
+- **SHA-256 Checksum:** `68541c4aa587c3517379e5f8393c9921506eafad9418f12c5b132f94b42d1b58`.
 
 ### Verification Commands
 ```powershell
@@ -149,7 +149,7 @@ Because GitHub CLI (`gh`) is not installed on the local Windows machine, the rel
 
    ### Asset Verification
    - **File:** `VerityVote_Clean_Distribution.zip` (574.27 KB)
-   - **SHA-256:** `9ec0fbfc6d5bcca6a44c5908a862f29e5e4fd4979f6d1d27a87d978de8272dd0`
+   - **SHA-256:** `68541c4aa587c3517379e5f8393c9921506eafad9418f12c5b132f94b42d1b58`
 
    ### Quick Start
    1. Extract ZIP to `C:\xampp\htdocs\Baymax_Voting_System`.

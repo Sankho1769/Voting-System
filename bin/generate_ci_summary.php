@@ -105,7 +105,17 @@ if ($testContent !== '') {
                     'total' => $sPass + $sFail,
                     'status' => ($sFail === 0 && $sPass > 0) ? 'PASS' : 'FAIL'
                 ];
+                if ($sFail > 0) {
+                    echo "::error title=Suite Failure::{$sName}: {$sFail} test(s) failed\n";
+                }
             }
+        }
+    }
+
+    foreach (explode("\n", $testContent) as $testLine) {
+        $trimmed = trim($testLine);
+        if (strpos($trimmed, '[FAIL]') !== false || strpos($trimmed, '[EXCEPTION]') !== false) {
+            echo "::error title=Test Failure::{$trimmed}\n";
         }
     }
 

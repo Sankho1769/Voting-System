@@ -1,4 +1,4 @@
-9ec0fbfc6d5bcca6a44c5908a862f29e5e4fd4979f6d1d27a87d978de8272dd0 *VerityVote_Clean_Distribution.zip
+68541c4aa587c3517379e5f8393c9921506eafad9418f12c5b132f94b42d1b58 *VerityVote_Clean_Distribution.zip
 
 # Verification Instructions for Windows:
 #

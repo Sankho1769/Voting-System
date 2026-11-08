@@ -6,7 +6,7 @@
 **Repository:** https://github.com/Sankho1769/Voting-System
 **Handoff Package Directory:** `VerityVote_Friend_Handoff/`
 **Distribution Archive:** `VerityVote_Clean_Distribution.zip`
-**Distribution Archive SHA-256:** `9ec0fbfc6d5bcca6a44c5908a862f29e5e4fd4979f6d1d27a87d978de8272dd0`
+**Distribution Archive SHA-256:** `68541c4aa587c3517379e5f8393c9921506eafad9418f12c5b132f94b42d1b58`
 **Primary Development Database:** `verityvote_db` (100% Preserved & Untouched)
 
 ---
@@ -240,7 +240,7 @@ When sharing `VerityVote_Friend_Handoff/` with another person:
    ```powershell
    Get-FileHash -Path "VerityVote_Clean_Distribution.zip" -Algorithm SHA256
    ```
-   Compare the result with `SHA256SUMS.txt` (`9ec0fbfc6d5bcca6a44c5908a862f29e5e4fd4979f6d1d27a87d978de8272dd0`).
+   Compare the result with `SHA256SUMS.txt` (`68541c4aa587c3517379e5f8393c9921506eafad9418f12c5b132f94b42d1b58`).
 3. **Step 2 — Execute 10-Step Installation:** Direct the tester to [`INSTALLATION_GUIDE.md`](file:///C:/Users/hp/Desktop/Baymax_Voting_System/VerityVote_Friend_Handoff/INSTALLATION_GUIDE.md).
 4. **Step 3 — Run Health Checker:** Ask the tester to run:
    ```powershell
